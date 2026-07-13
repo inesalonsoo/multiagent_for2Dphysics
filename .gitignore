@@ -1,0 +1,22 @@
+# Secrets -- never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Data (raw trajectories, gitignored per CLAUDE.md -- streamed/regenerated, not tracked)
+data/*
+!data/.gitkeep
+
+# Reference papers (third-party copyrighted PDFs -- cite the arXiv URL in
+# docs instead of redistributing a copy; kept locally, never tracked)
+*.pdf
+
+# OS
+.DS_Store
+Thumbs.db

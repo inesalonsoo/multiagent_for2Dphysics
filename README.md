@@ -1,6 +1,6 @@
 # Moiré-MSM-Engine
 
-**An autonomous multi-agent system that discovers Markov State Model pipelines for stochastic dynamics, verifies every result against exact analytical physics, and quantifies its own uncertainty — built as a path toward characterizing switching dynamics in moiré (twisted-bilayer) materials.**
+**An autonomous multi-agent system that discovers Markov State Model pipelines for stochastic dynamics, verifies every result against exact analytical physics, and quantifies its own uncertainty. Built as a path toward characterizing switching dynamics in moiré (twisted-bilayer) materials.**
 
 ## Overview
 

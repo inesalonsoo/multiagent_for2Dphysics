@@ -2,7 +2,7 @@
 
 > Living memory of this project. Claude Code MUST read this and CLAUDE.md at the
 > start of every session and confirm understanding before doing anything.
-> The human (Inés, the PI) updates the "Next task" and approves each step.
+> The human updates the "Next task" and approves each step.
 > Append a dated entry to the Session Log at the end of every session.
 
 ---
@@ -27,13 +27,13 @@ tilt parameter b) rather than a separate late demo. The project's real subject i
 the **agentic architecture**: a propose → run → verify → log loop, mirroring the
 **Orchestrator/Prover/Verifier architecture of Axiomatic AI's Ax-Prover**
 (arXiv:2510.12787, Koppens et al.), applied to autonomous uncertainty-quantified
-MSM discovery — and the 2D-materials focus of the ICFO QNO group (F. Koppens).
+MSM discovery — and the 2D-materials focus.
 
 ## 2. Non-negotiable principles (see CLAUDE.md for the full constitution)
 
 - **Nothing is a black box.** Every function gets a plain-English docstring, named
   intermediate variables, and comments on non-obvious math. Longer-but-clearer beats
-  shorter-but-dense. The PI must be able to explain every file out loud.
+  shorter-but-dense. The human must be able to explain every file out loud.
 - **One module per request.** Build the module, write its known-answer test, run it,
   report. Do not build ahead. Do not touch the next phase until the current module
   passes its check.
@@ -79,7 +79,7 @@ pydantic-ai, h5py, tqdm, pytest.
   γ=1: **L_theirs = 2·L_ours** (verified via front-width AND bifurcation-point
   matching, see §9). Always convert their quoted thresholds through this factor.
 
-## 4. Chosen parameters (PI's decisions — do not change without asking)
+## 4. Chosen parameters (human decisions — do not change without asking)
 
 ### Phase 1 (0-D, primary benchmark)
 - Barrier height: **A = 1.0** (same potential as Phase 4, gamma=1 implicit — no
@@ -116,7 +116,7 @@ pydantic-ai, h5py, tqdm, pytest.
   Milstein (py-pde's other SDE solver) is unneeded since our noise_variance =
   2γ/β is a constant, not phi-dependent — Milstein's extra correction terms are
   for multiplicative noise and reduce to zero here, so plain Euler-Maruyama is
-  exact and cheaper. Confirmed with the PI (Session 2).
+  exact and cheaper. Confirmed in Session 2.
   **[2026-07-11] dt MUST be re-picked for L=2.5, do not reuse the old dt=0.005.**
   Grid stays 32×32 (unchanged), so dx = L/32 = 2.5/32 ≈ 0.0781 (was 0.3125 at
   L=10) — the CFL bound dt < dx²/(4γ) shrinks to ≈0.00153 (was ≈0.0244).
@@ -127,7 +127,7 @@ pydantic-ai, h5py, tqdm, pytest.
 - Agent model string: **anthropic:claude-sonnet-5** (the "anthropic:" provider
   prefix is required by pydantic-ai's infer_model() -- a bare "claude-sonnet-5"
   raises "Unknown model", caught before any real API call, 2026-07-12).
-  Corrected 2026-07-12, PI's choice among
+  Corrected 2026-07-12, human's choice among
   claude-sonnet-5/claude-haiku-4-5-20251001/claude-opus-4-8, for the convergence
   study — resolves the standing "verify before Phase 3" reminder, see §9)
 - **[2026-07-09] pytest approved.** Added to the approved package list (was missing
@@ -156,7 +156,7 @@ moire-msm-engine/
 Note: `physics/simulate_0d.py` is now the Phase 1 primary engine; `physics/simulate.py`
 (the 2D field) moved to Phase 4. See §1/§6 for the pivot.
 
-## 6. Phase roadmap (each phase is a complete, presentable deliverable)
+## 6. Phase roadmap 
 
 - **Phase 1 — Verified engine (0-D).** Stochastic 0-D double-well sim → MSM recovers
   exactly two states; log(rate) vs β plot matches the EXACT Eyring-Kramers formula
@@ -218,8 +218,8 @@ Phase 1 (0-D primary engine):
   real methodological issues found and fixed along the way.
 
 Phase 2:
-- [ ] 2.1 pipeline/uq.py (BayesianMSM interval; analytical value inside 90% CI)
-- [ ] 2.2 Rate plot with error bars
+- [x] 2.1 pipeline/uq.py (BayesianMSM interval; analytical value inside 90% CI)
+- [x] 2.2 Rate plot with error bars
 
 Phase 3 (three-agent architecture, mirrors Ax-Prover arXiv:2510.12787 §3.1 —
 see §9 for the full reasoning behind the split from two agents to three):
@@ -305,7 +305,7 @@ Phase 4 (2D deployment, was Phase 1 before the pivot):
     1/√2 at our A=1,γ=1 (factor of 2 apart, see §9).
   - §3.1 Eq. 7/13: Freidlin-Wentzell large deviation result and the full
     Eyring-Kramers formula with prefactor (used directly for Phase 1's 0-D engine).
-  - §3.2.1 (the passage the PI quoted): confirms the Eyring-Kramers PREFACTOR is
+  - §3.2.1 (the passage the human quoted): confirms the Eyring-Kramers PREFACTOR is
     analytically unknown in 2D ("nothing is known even in dimension 2") — this is
     the core reason Phase 1 moved to 0-D rather than trying to nail a 2D rate.
   - §3.3.1 Eq. 20: β\*(L) = exp(L/√2)/(L²|λ0|) threshold for Eyring-Kramers/
@@ -330,7 +330,7 @@ Always open a reference and confirm it says what we assume before relying on it.
 ## 9. Known bugs / open questions
 
 - **[2026-07-12] RESOLVED — agent model string.** Was "claude-sonnet-4-6"
-  (stale). PI chose **claude-sonnet-5** for the convergence study (over
+  (stale). Human chose **claude-sonnet-5** for the convergence study (over
   claude-haiku-4-5-20251001, cheaper but risked confounding the "does the
   search explore" question with weaker reasoning; and claude-opus-4-8,
   unnecessarily expensive for this task). Updated in
@@ -340,7 +340,7 @@ Always open a reference and confirm it says what we assume before relying on it.
 - **[2026-07-11] RESOLVED — Phase 1/Phase 4 pivot: primary benchmark moves to the
   0-D double well.** Follows directly from the prior sessions' dead end: the
   symmetric-well 2D field showed no observable switching even after breaking the
-  symmetry with a tilt up to b=0.5 (see the entries below). PI's diagnosis: a
+  symmetry with a tilt up to b=0.5 (see the entries below). Human's diagnosis: a
   purely symmetric double well has Δf=0, so a nucleated droplet has no bulk driving
   force and switching is governed by curvature-driven shrinkage alone — the WORST
   case for switching, not a mystery to be tweaked away. Rather than keep pushing b
@@ -362,7 +362,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     session, and now further clarified: this w is in OUR normalization, and does
     NOT equal Rolland-Bouchet's front width (√2) directly — see the unit-conversion
     derivation immediately below, which was the missing piece the whole time.
-  - **Unit-conversion derivation (the "confirm before finalizing" the PI asked
+  - **Unit-conversion derivation (the "confirm before finalizing" the human asked
     for).** Matching our ∂ₜφ=γ∇²φ−dV/dφ+√(2γ/β)η against Rolland-Bouchet's
     ∂ₜA=∂ₓ²A+(A−A³)+√(2/β)η term-by-term requires γ=1 (already true for us) AND
     A_param=1/4 (NOT our chosen A=1). γ matching means noise and β carry over 1:1
@@ -378,8 +378,8 @@ Always open a reference and confirm it says what we assume before relying on it.
        Cross-checked via the invariant k·w=√2, which holds in both unit systems.
     - **Result: L_theirs = 2·L_ours, exactly, at our A=1,γ=1.** β does NOT rescale
       (noise convention matches once γ=1 is fixed). This directly changes the
-      Phase 4 production L: the PI's "L≈5" was stated citing Rolland-Bouchet's own
-      "β≳12,L≲13" box verbatim (their units) — confirmed with the PI (see the
+      Phase 4 production L: the human's "L≈5" was stated citing Rolland-Bouchet's own
+      "β≳12,L≲13" box verbatim (their units) — confirmed with the human (see the
       2026-07-11 AskUserQuestion exchange) that this means **L_ours=2.5**, not a
       literal 5, updated in §4. Corrected threshold formula for future reference:
       β\*(L_ours) = exp(√2·L_ours)/(4·L_ours²) (replacing their Eq. 20 directly in
@@ -424,7 +424,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   estimate assumed. This ratio also predicts the fix: shrinking the domain
   toward L~1-2 (L/ξ approaching 1) should move the system back into the
   coherent, single-macrostate regime the 0-D estimate describes. See
-  `results/phi_switching_check_long_run.png` and Session 4 log. Needs a PI
+  `results/phi_switching_check_long_run.png` and Session 4 log. Needs a human
   decision on how to proceed before the "visual switching check" gate for
   module 1.2 can be called complete.
 - **[2026-07-10] UPDATE — domain-size sweep (L=2, L=4) does NOT support the
@@ -432,7 +432,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   and L=4 (16×16 grid, dx=0.25; grid resolution scaled down with L to keep dx
   roughly fixed and dt=0.005 valid under CFL at both sizes — flagged since
   grid resolution is normally a protected parameter, but this was an explicit,
-  PI-directed diagnostic sweep, not a production change). Result: **zero
+  human-directed diagnostic sweep, not a production change). Result: **zero
   crossings at both sizes** (5000 total simulated time units each), giving
   effective-barrier lower bounds >1.46 — equal to or worse than the >1.36
   bound already inferred for L=10. Shrinking the domain 5x did not move the
@@ -449,7 +449,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   tension/curvature alone (closer to zero-field Ising coarsening than
   standard nucleation), which may suppress switching far more severely than
   either the 0-D Kramers or the naive nucleation-barrier picture predicted.
-  **PI is reconsidering the physics before deciding next steps** (options on
+  **Human is reconsidering the physics before deciding next steps** (options on
   the table: push the sweep to L~0.5-1, near/below the interface width;
   abandon the domain-shrink approach and accept a long production run (or a
   temperature/barrier change for the demo run only) is needed instead; or a
@@ -457,9 +457,9 @@ Always open a reference and confirm it says what we assume before relying on it.
   content (in particular, whether the analytical slope is exactly −A or needs
   adjustment for the regime we land in) depends on this decision. No code
   changes this session; sweep script was scratch-only, not committed.
-- **[2026-07-10] PI redirected: symmetric well is the mechanism, not a
+- **[2026-07-10] Human redirected: symmetric well is the mechanism, not a
   mystery — deliberately break it with a tilt.** V(phi) = A(phi²−1)² + b·phi.
-  Rationale (PI): a symmetric double well has Δf=0, so a nucleated droplet has
+  Rationale (Human): a symmetric double well has Δf=0, so a nucleated droplet has
   no bulk driving force and switching is governed by curvature-driven
   shrinkage alone — worst case for switching, consistent with everything
   observed above. Corrects the interface-width scale used earlier: w =
@@ -475,7 +475,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     8 tests total across both files now covering the tilted case
     (finite-difference check on the tilted derivative, symmetry-breaking
     sanity check) — all passing alongside the 7 pre-existing simulate tests.
-  - **ΔF derivation (the "own small known-answer" the PI asked for):**
+  - **ΔF derivation (the "own small known-answer" the human asked for):**
     perturbation theory around φ=±1 gives well positions
     φ_± ≈ ±1 − b/(8A) (BOTH wells shift the same direction, same amount, to
     O(b)) and ΔF = V(φ_+)−V(φ_−) = 2b + O(b³) — the O(b²) well-shift
@@ -485,7 +485,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     exact for any "modest" b. `known_answers.py` will use the exact
     root-found ΔF (not the 2b shortcut) as the actual known answer, with 2b
     documented as the cross-check.
-  - **Confirming diagnostic (as the PI specified, before committing):
+  - **Confirming diagnostic (as the human specified, before committing):
     FAILED at the originally-proposed "modest" b=0.05–0.1.** 5 replicas ×
     T=1000 at b=0.1, b=0.05, AND b=-0.1, all starting from φ=+1 (L=10,
     unchanged domain) — zero committed crossings in every case; the b=0.1
@@ -507,7 +507,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     overestimate barriers badly right at the spinodal (where the true barrier
     must vanish, unlike the CNT formula), so a real window near b~1.0-1.4
     might exist that CNT can't see — untested.
-  - **PI is pausing to think through the physics before the next experiment.**
+  - **Human is pausing to think through the physics before the next experiment.**
     Options on the table: push b toward the spinodal (1.0-1.4) empirically;
     reconsider β or γ specifically for the switching demo (both protected
     parameters, would need explicit values); or something else. No further
@@ -527,7 +527,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   maximum-likelihood MSM transition-matrix estimation bias with sparse
   transition counts (each replica sees only ~2-6 crossings by β=9-10), a
   well-documented, separate phenomenon from the theory's own validity range.
-  **PI's call:** restrict the hard slope gate to β≤`FIT_BETA_MAX`=7.0 (clean
+  **Human's call:** restrict the hard slope gate to β≤`FIT_BETA_MAX`=7.0 (clean
   pairwise slopes there); still measure, plot, and report β>7 with the
   sparse-count caveat stated explicitly (different marker in
   `results/arrhenius.png`, not silently dropped). Also added, prompted by
@@ -550,7 +550,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     used as the pass/fail metric) — 10% matches Rolland-Bouchet's own
     reported "1±0.1" agreement for their harder field-theoretic case
     (arXiv:1507.05577 §4.2). This is a self-correction of a misimplementation
-    of the PI's original spec, not a new open question, so it wasn't
+    of the human's original spec, not a new open question, so it wasn't
     re-confirmed before applying — flagged transparently instead. Applied the
     same fix to `test_msm_recovers_two_states.py`'s own slope check (20%
     tolerance there, looser to match its much smaller/noisier sample).
@@ -564,10 +564,9 @@ Always open a reference and confirm it says what we assume before relying on it.
     (rate systematically OVERestimated as transition counts thin out).
     `results/arrhenius.png` shows this directly: β≤7 points sit almost
     exactly on the analytical line; the excluded β>7 points visibly float
-    above it. **Phase 1 is done — first Koppens-ready artifact produced.**
+    above it. **Phase 1 is done — first artifact produced.**
 - **[2026-07-11] Phase 3 architecture: two agents → three, following Ax-Prover.**
-  PI read Ax-Prover (arXiv:2510.12787, Koppens et al. — same lab as this
-  project's motivating ICFO QNO/Koppens connection) and mapped its
+  Human read Ax-Prover (arXiv:2510.12787, Koppens et al.) and mapped its
   Orchestrator/Prover/Verifier separation onto the MSM domain. Reasoning:
   - **The core principle borrowed:** an independent, grounded verifier.
     Ax-Prover's Verifier doesn't just check the Prover's work casually — it's
@@ -614,7 +613,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     abstract), and CLAUDE.md (TECH STACK NOTES names the pattern + lineage so
     a future agent building this knows the Orchestrator is a real component,
     and HARD BOUNDARY 3 gets a pointer to this authorization). §6 (phase
-    roadmap) was already updated by the PI directly with the full
+    roadmap) was already updated by the human directly with the full
     Orchestrator/Optimizer/Validator description before this entry was
     written.
 
@@ -624,7 +623,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   budget that makes Phase 2's gate ask the physically correct question.**
 
   **Part A — three-effect decomposition of Phase 1's ~2-9% per-point residual
-  (the PI asked for this documented exactly, as a keeper entry):**
+  (the human asked for this documented exactly, as a keeper entry):**
   1. **Sparse-transition-count MSM bias at high β (β=8-10) — TOLERATED, not
      fixed.** Only ~2-6 committed crossings per replica there; maximum-
      likelihood transition-matrix estimation is known to be biased with
@@ -649,7 +648,7 @@ Always open a reference and confirm it says what we assume before relying on it.
      by building `find_converged_lagtime()` (`pipeline/msm.py`) — smallest
      lag where the slowest implied timescale changes by <3% on doubling,
      tight enough to actually distinguish "still climbing" from "flat" (an
-     earlier 25%-tolerance attempt was rejected by the PI for calling β=7's
+     earlier 25%-tolerance attempt was rejected by the human for calling β=7's
      +12.84% change a "plateau," which it plainly wasn't). Re-derived
      `LAGTIME_BY_BETA` from the tested function, not by hand: `{3.0:10, 4.0:10,
      5.0:20, 6.0:40, 7.0:40, 8.0:320, 9.0:80, 10.0:1280}`. Re-ran the full
@@ -694,13 +693,13 @@ Always open a reference and confirm it says what we assume before relying on it.
   rate (`rate = 1/(timescale*dt)`, bounds swap since rate is a *decreasing*
   function of timescale). 3 tests, passing.
 
-  **Verified, per the PI's explicit instruction, rather than assumed: does
+  **Verified, per the human's explicit instruction, rather than assumed: does
   the interval genuinely cover the analytical value?** First version gated
   on the raw Bayesian CI alone and FAILED at 4 of 5 β≤7 points (only β=6
   passed) — CIs of 1.2-4.7% relative width are tighter than the real,
   already-known ~2-9% systematic from Part A. This was not a new bug: a
   Bayesian credible interval is a STATISTICAL-only statement given a fixed
-  dataset and model; it says nothing about systematic/model bias. **PI's
+  dataset and model; it says nothing about systematic/model bias. **Human's
   explicit fix:** report statistical (this module's CI) and systematic
   (Phase 1's already-measured per-β deviation, loaded from
   `results/arrhenius_sweep_raw.npz`, not re-derived) SEPARATELY, combine in
@@ -721,7 +720,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     phase1_mean|/phase1_mean`; `build_total_error_band()` centers the total
     band on `phase1_mean_rate`, using this module's own CI only for its
     relative WIDTH (the statistical component), not as the center.
-  - **Confirmed against real data before declaring done (per the PI's
+  - **Confirmed against real data before declaring done (per the human's
     explicit "don't assume it, check it" instruction): at β=5, statistical=
     1.08%, systematic=2.97%, total=3.16% — total band [0.011409, 0.012155]
     cleanly contains the analytical 0.012133; the pure statistical CI
@@ -770,7 +769,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   disagreement shows up plainly in the ledger rather than being invisible.
   This is the single guarantee the rest of Phase 3 depends on: it makes
   "can the Validator's hard gate override the LLM" a schema-level property,
-  provable without a single real API call, per the PI's note that this is
+  provable without a single real API call, per the human's note that this is
   "the single most important property of the whole Ax-Prover-style
   architecture."
   - **Scope adaptation, flagged rather than silently deviating:**
@@ -800,12 +799,12 @@ Always open a reference and confirm it says what we assume before relying on it.
     schema's own docstring) so this is a planned step, not something
     rediscovered after a tilted run silently ships without its most
     important physics check.
-  - **`AgenticRun`/`LedgerEntry` field order matches the PI's requested
+  - **`AgenticRun`/`LedgerEntry` field order matches the human's requested
     reading order exactly** (proposal → result → decision → next_action),
     and both round-trip through `model_dump_json`/`model_validate` cleanly
     (tested) — the format `agents/loop.py` (3.6) will write to
     `results/ledger.json` is now fixed before any run generates real data,
-    per the PI's note that restructuring the ledger after runs exist is
+    per the human's note that restructuring the ledger after runs exist is
     annoying.
   - **`extra="forbid"` on every contract** (via a shared `ContractModel`
     base): a malformed/hallucinated field in an agent's structured output
@@ -816,7 +815,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   `run_msm_pipeline(config, trajectory, dt) -> PipelineResult` is where
   Ax-Prover's "aggressive testing checked by a conservative compiler"
   framing (§6) has to actually hold at the code level, not just the
-  agent-role level — the PI's framing: everything below this function is
+  agent-role level — the human's framing: everything below this function is
   verified physics, everything above it is LLM reasoning, so this
   function must never surprise either side.
   - **Determinism:** the only randomness anywhere in the analysis pipeline
@@ -865,7 +864,7 @@ Always open a reference and confirm it says what we assume before relying on it.
 - **[2026-07-12] Phase 3 module 3.3 — agents/optimizer.py built. The
   design question this module answers: what's testable about an agent
   whose whole job is non-deterministic reasoning toward a target with no
-  closed-form answer?** PI's framing, held firmly rather than resolved by
+  closed-form answer?** Human's framing, held firmly rather than resolved by
   over- or under-testing: you cannot assert a proposed config is GOOD (no
   known optimum, non-deterministic LLM) — but you CAN assert the
   machinery around the proposal is sound, deterministically, with zero
@@ -919,7 +918,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     preserving the three-agent separation the whole architecture cites.
   - **6 tests, all passing** (`tests/test_optimizer.py`). Full suite: 69/69.
 - **[2026-07-12] Phase 3 module 3.4 — agents/validator.py built: the
-  keystone. The PI's framing going in — "all the real judgment lives
+  keystone. The human's framing going in — "all the real judgment lives
   here, grounded in physics you already proved" — is what this module's
   design had to earn, not just assert.**
   - **Independence proven at the validator level, not just the schema
@@ -1047,11 +1046,11 @@ Always open a reference and confirm it says what we assume before relying on it.
     `run_agentic_loop_with_real_agents()`, write the resulting
     `AgenticRun` to `results/ledger.json`.
 - **[2026-07-12] Modules 3.6/3.7 + convergence-study script built,
-  preparing for the PI's flagged next step (a real-agent convergence-
+  preparing for the human's flagged next step (a real-agent convergence-
   robustness study). Two real findings caught before any API budget was
   spent, plus the study's design.**
   - **Agent model string corrected: "claude-sonnet-4-6" → claude-sonnet-5.**
-    Resolves the standing §9/§4 reminder. PI's choice, weighed against
+    Resolves the standing §9/§4 reminder. Human's choice, weighed against
     claude-haiku-4-5-20251001 (cheaper, but risked confounding "does the
     search explore" with weaker reasoning) and claude-opus-4-8
     (unnecessarily expensive for this task). Updated in
@@ -1088,7 +1087,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     `test_agents_with_fake_llm.py` added, to avoid a fifth file
     duplicating coverage the other four already have module-by-module.
   - **`scripts/run_phase3_agentic.py` built: the convergence-robustness
-    study driver.** Runs `N_REPETITIONS=8` (PI's chosen 5-10 range) real
+    study driver.** Runs `N_REPETITIONS=8` (Human's chosen 5-10 range) real
     agentic loops on ONE fixed reference trajectory at `REFERENCE_BETA`
     (=5.0, Phase 1/2's clean β≤7 range — deliberately NOT a high-β demo,
     since Phase 2 already showed the total error band widens with sparse
@@ -1109,16 +1108,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   `anthropic:claude-sonnet-5`, β=5.0). Two more real bugs caught along the
   way; one real, honestly-reported NEGATIVE finding on the study's own
   central claim. Full write-up: `results/phase3_convergence_study_report.md`.**
-  - **Setup: PI's own terminal couldn't reach this tool's process.** The
-    PI set `ANTHROPIC_API_KEY` in their own VSCode terminal (session-only
-    `$env:` and persistent `setx`, both tried) — neither was visible to
-    this tool's already-running shell processes, since those are separate
-    OS processes that don't share environment state set afterward.
-    Resolved via a project-local `.env` file (not committed — this
-    project has no git repo — and never printed; only checked for
-    presence/length), sourced explicitly (`set -a; source .env; set +a`)
-    immediately before every real-agent command.
-  - **Two more real bugs, caught via the PI's own explicit "1-run dry
+  - **Two more real bugs, caught via the human's own explicit "1-run dry
     test first" instruction — exactly the discipline that caught them
     before the full 8-run budget was at risk:**
     1. `agents/optimizer.py`/`agents/validator.py`'s `"claude-sonnet-5"`
@@ -1134,7 +1124,7 @@ Always open a reference and confirm it says what we assume before relying on it.
        call).
     2. The dry run's first real attempt then hit `anthropic.
        BadRequestError: ...credit balance is too low...` — an account
-       billing issue, not a code issue, resolved by the PI adding
+       billing issue, not a code issue, resolved by the human adding
        credits. The dry run succeeded on retry: 1 iteration, `stop_
        reason=validator_accepted`, Optimizer independently proposed
        Phase 1's own validated `(n_clusters=50, msm_lagtime=20)`, measured
@@ -1165,7 +1155,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     (n_clusters=50, cluster_seed=42, msm_lagtime=20) and therefore
     produced the byte-identical measured result (rate=0.0121142034... to
     full float precision), every time.** This is exactly the failure mode
-    flagged in advance, by the PI, before the study ran: identical
+    flagged in advance, by the human, before the study ran: identical
     outcomes every time mean the study can't tell whether the Validator's
     gate is constraining anything, because no divergent path was ever
     tested against it. Root cause, diagnosed rather than shrugged at:
@@ -1194,7 +1184,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     determinism (`tests/test_tools.py`) when every run's inputs are
     identical. Both open questions need a deliberately different
     experimental design to actually test.
-  - **PI CORRECTED the originally-drafted "tighten the tolerance" lever
+  - **Human CORRECTED the originally-drafted "tighten the tolerance" lever
     before it was tried, for a reason worth keeping: tightening the
     tolerance until a correct config gets rejected doesn't demonstrate the
     verifier catching a wrong config — it demonstrates the verifier being
@@ -1234,7 +1224,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     the specific v1 phrasing is gone) and `test_format_history_surfaces_
     the_validators_suggested_change` added to `tests/test_optimizer.py`.
   - **Resumability verified deliberately, not left to a second real
-    crash** (PI's explicit priority, given real search costs more per run
+    crash** (human's explicit priority, given real search costs more per run
     than v1's always-1-iteration loop, so a crash mid-batch is more
     expensive to redo): `scripts/run_phase3_agentic.py::
     run_all_repetitions` refactored for dependency injection (`ledger_dir`,
@@ -1251,7 +1241,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     run) rather than re-paying for it — the old v1 ledgers were archived
     first specifically so the resumability logic wouldn't mistake them
     for already-completed v2 runs.
-  - **`N_REPETITIONS` dropped from 8 to 4** — honest scoping, per the PI's
+  - **`N_REPETITIONS` dropped from 8 to 4** — honest scoping, per the human's
     explicit framing: the claim needs four QUALITATIVE properties (paths
     diverge, a real rejection occurs, the Optimizer reacts, accepted
     configs stay in-band), not statistical weight, and the dry run alone
@@ -1310,7 +1300,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     criterion`, `test_format_history_states_the_hard_physics_gates_
     explicitly`).
   - **Phase 4's well-identity-tracking prerequisite built, deliberately
-    BEFORE any tilted-potential run — the PI's explicit framing: "start
+    BEFORE any tilted-potential run — the human's explicit framing: "start
     it with the well-tracking... not a field toggle."** `agents/tools.py`
     now keeps `cluster_centers` (previously discarded immediately after
     clustering) and adds `_classify_well_identity()`: for each PCCA+
@@ -1359,7 +1349,7 @@ Always open a reference and confirm it says what we assume before relying on it.
 - **Last completed:** redesigned and re-ran the convergence-robustness
   study. v1 (8 runs) found 0/8 path diversity, root-caused to the
   Optimizer's prompt handing it the converged `msm_lagtime` directly.
-  PI explicitly rejected "tighten the tolerance until something fails" as
+  Human explicitly rejected "tighten the tolerance until something fails" as
   the fix (would manufacture a rejection against a right answer, not find
   a real one) and directed the actual fix: `SearchBounds` now states only
   the valid range + physical reasoning, never the solved value, so a real
@@ -1387,7 +1377,7 @@ Always open a reference and confirm it says what we assume before relying on it.
   Phase 4 deployment work, not built ahead of it. Full detail in §9.
 - **Last check passed:** full suite `tests/`, 99/99, ~106s (see Session 11 log).
 - **➡️ NEXT TASK:** Phase 4 (2D deployment, corrected L=2.5). Its own
-  first task, per the PI's explicit ordering, is NOT a tilted-potential
+  first task, per the human's explicit ordering, is NOT a tilted-potential
   run — `physics/simulate.py` (the 2D field) and its tilt support already
   exist and are tested (§7 modules 4.1/4.2), but the agentic-loop side of
   a Phase 4 deployment still needs `agents/validator.py`'s Boltzmann
@@ -1427,7 +1417,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     the `noise=` variance argument of `pde.PDE`, so we pass `2*gamma/beta`, the
     square of the physical prefactor); no py-pde solver supports adaptive stepping
     with noise, so the integrator is fixed-step explicit Euler-Maruyama, confirmed
-    with the PI before switching.
+    with the human before switching.
   - **Checks (`tests/test_simulate.py`, 5 tests, all passing):** correct
     `(n_steps, 32, 32)` shape and finiteness; same seed → identical trajectory;
     different seeds → different trajectories; near-zero noise (β=1e8) from
@@ -1437,7 +1427,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     φ over a 5-time-unit run at the default β=5.0, fluctuating around the φ=+1 well
     with no full switch observed (consistent with "rare but observable" switching).
   - **Next:** 1.3 `physics/known_answers.py`.
-- **[2026-07-10] Session 3 (reframe + CLAUDE.md fix):** PI clarified the integrator
+- **[2026-07-10] Session 3 (reframe + CLAUDE.md fix):** Human clarified the integrator
   change is a correction of an error in the original spec, not a fallback —
   "adaptive RK45 first" was simply wrong for a stochastic system in py-pde. Reworded
   §4's integrator entry accordingly. Corrected CLAUDE.md's TECH STACK NOTES (no
@@ -1466,11 +1456,11 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     switch observed at γ=1, β=5 over T=3000 (600k steps); confirmed via a
     throwaway β=1.5 diagnostic run that the integrator itself works. Logged as
     an open question in §9 with a working hypothesis (nucleation-barrier effect
-    of the extended domain) — **needs a PI decision before module 1.2 can be
+    of the extended domain) — **needs a human decision before module 1.2 can be
     marked done.** See `results/phi_switching_check_long_run.png`.
-  - **Next:** PI decision on the switching-check open question (§9), then
+  - **Next:** Human decision on the switching-check open question (§9), then
     1.3 `physics/known_answers.py`.
-- **[2026-07-10] Session 5 (tilt design, still blocked):** PI redirected the
+- **[2026-07-10] Session 5 (tilt design, still blocked):** Human redirected the
   switching-check dead end into a deliberate design change: tilt the
   potential (V=A(φ²−1)²+bφ) to give the two wells a genuine bulk free-energy
   difference, switch the primary known-answer to the Boltzmann population
@@ -1482,7 +1472,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     (b=0.0 default). 15/15 tests passing, incl. 2 new tilted-case tests.
   - **ΔF derivation verified:** perturbation theory gives ΔF=2b+O(b³);
     confirmed via exact root-finding to <0.01% error for b≤0.2.
-  - **Confirming diagnostic (PI-specified gate before committing): failed.**
+  - **Confirming diagnostic (human-specified gate before committing): failed.**
     Modest b=0.05-0.1 showed zero switching — traced to a hard geometric
     cause (critical droplet radius r_c=σ/2b exceeds the L=10 domain, not
     just "rare"). Retried at b=0.5 (well past modest): still zero switching,
@@ -1490,10 +1480,10 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     CNT suggests NO sub-spinodal b reaches observable switching at γ=1,
     β=5 — though CNT is unreliable right at the spinodal, so this isn't
     certain without direct testing.
-  - **Status: paused.** PI is thinking through the physics before directing
+  - **Status: paused.** Human is thinking through the physics before directing
     the next experiment. `known_answers.py` (1.3) not started — blocked on
     which regime (b, and possibly β/γ) we land in. No further runs pending.
-- **[2026-07-11] Session 6 (Phase 1/Phase 4 pivot to the 0-D benchmark):** PI
+- **[2026-07-11] Session 6 (Phase 1/Phase 4 pivot to the 0-D benchmark):** Human
   redirected the whole approach rather than continuing to chase the 2D
   symmetric-well dead end: benchmark the full pipeline on the 0-D double well
   first (Eyring-Kramers rate and Boltzmann ratio both exact and observable there),
@@ -1502,11 +1492,11 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   arXiv:1507.05577 (Rolland, Bouchet & Simonnet) throughout.
   - **Read the full paper** (PDF in project root) to ground every quoted number
     rather than trust them secondhand — see §8 for the section-by-section notes.
-  - **Did the "confirm before finalizing" unit-conversion check the PI asked
+  - **Did the "confirm before finalizing" unit-conversion check the human asked
     for, and it mattered:** derived, then independently double-verified via two
     unrelated methods (front width; closed-form bifurcation point), that
     Rolland-Bouchet's L equals 2× ours at our chosen A=1, γ=1 — not an
-    approximate O(1) factor, an exact one. This changed the PI's proposed
+    approximate O(1) factor, an exact one. This changed the human's proposed
     Phase 4 "L≈5" into L_ours=2.5 once confirmed which unit system was meant
     (theirs, per their own quoted β≳12/L≲13 box) — a 2x correction that would
     have silently put a "small L" production run outside the intended coherent
@@ -1531,7 +1521,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     steps/sec — validating the whole premise of the pivot.
   - **Next:** 1.3 `physics/known_answers.py` (exact Eyring-Kramers rate +
     Boltzmann population ratio).
-- **[2026-07-11] Session 7 (module 1.3, known_answers.py):** PI corrected my
+- **[2026-07-11] Session 7 (module 1.3, known_answers.py):** Human corrected my
   initial plan to reuse Rolland-Bouchet's Eq. 13 (the field-theoretic rate
   formula, with infinite-dimensional Hessian-determinant products and an
   L-dependent saddle eigenvalue) for the 0-D module — none of that machinery
@@ -1552,7 +1542,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     β=5,A=1; rate strictly decreases with β; log(rate)-vs-β slope is exactly
     −A across β∈{3,6,9,12} (the "ironclad" check, independent of the
     asymptotic prefactor).
-  - **Empirical β-sweep validation (PI-requested, before locking β=5):** ran
+  - **Empirical β-sweep validation (human-requested, before locking β=5):** ran
     `run_trajectory_0d` at β∈{4,6,8,10} (crossing counts 9-17, ~30s total
     compute) and compared to `eyring_kramers_rate_0d`. Slope -1.039 vs exact
     -1.0 (~4% error, within Poisson noise at these sample sizes). Prefactor
@@ -1569,7 +1559,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   - **`pipeline/cluster.py`:** `cluster_trajectory(features, n_clusters=50,
     seed=42, max_fit_frames=50_000)` — deeptime KMeans. 3 tests pass (shape/
     range, reproducibility, centers span the data range).
-  - **Visual gate (PI-requested, before trusting the pipeline further):**
+  - **Visual gate (human-requested, before trusting the pipeline further):**
     plotted 50 microstate centers along the coordinate and a trajectory
     segment colored by microstate, zoomed on a real crossing
     (`results/cluster_visual_gate.png`). Passed cleanly: centers tile from
@@ -1608,7 +1598,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     from the MSM's slowest implied timescale (relaxation rate), reconciled
     against `known_answers.eyring_kramers_rate_0d`'s one-way escape rate via
     the factor of 2 for a symmetric two-state system — verified empirically
-    BEFORE trusting the sweep (PI-required pre-flight check): MSM relaxation
+    BEFORE trusting the sweep (human-required pre-flight check): MSM relaxation
     rate came out 2.01x the raw committed-crossing rate at β=5. Uncertainty
     from N_REPLICAS=6 independent trajectories per β (not BayesianMSM —
     that's Phase 2's job), fixed N_STEPS=15M across the whole β=3-10 sweep so
@@ -1637,9 +1627,9 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     analytical line; excluded high-β points visibly float above it. First
     genuinely presentable artifact in the project.
   - **Phase 3 architecture updated to three agents, ahead of building it**
-    (PI read Ax-Prover, arXiv:2510.12787, mapped its Orchestrator/Prover/
+    (Human read Ax-Prover, arXiv:2510.12787, mapped its Orchestrator/Prover/
     Verifier split onto this project — full reasoning above, dated entry).
-    Updated for consistency: §1 (names Ax-Prover), §6 (PI wrote this
+    Updated for consistency: §1 (names Ax-Prover), §6 (Human wrote this
     directly), §7 (module checklist: schemas, tools, optimizer, validator
     +ill-posedness sub-item, orchestrator, thin loop), this §9 entry, and
     CLAUDE.md (TECH STACK NOTES names the pattern + the deliberate
@@ -1648,7 +1638,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     agent code written yet — planning/spec only, per "one module per
     request."
   - **Full suite: 42/42 passing, ~40s.**
-  - **Next:** PI's call — Phase 2 (`pipeline/uq.py`) or start Phase 3
+  - **Next:** Human's call — Phase 2 (`pipeline/uq.py`) or start Phase 3
     (`agents/schemas.py`).
 - **[2026-07-12] Session 10 (Phase 2 built and PASSED; a real lag-convergence
   bug found and fixed along the way; one test assertion relocated):**
@@ -1661,13 +1651,13 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     cleanly) and tested a dt-discretization-bias hypothesis (genuinely
     inconclusive at affordable replica counts, deferred). Full three-effect
     decomposition (sparse counts + asymptotic correction = tolerated,
-    lag bug = fixed) documented in §9 as a keeper entry, exactly as the PI
+    lag bug = fixed) documented in §9 as a keeper entry, exactly as the human
     requested.
   - **Built `pipeline/uq.py`** (`compute_rate_credible_interval`, BayesianMSM
     via `count_mode="effective"`) and `scripts/run_phase2_uq.py`. First gate
     attempt (pure Bayesian CI) correctly failed 4/5 points — a statistical-
     only CI was never going to cover Phase 1's already-measured systematic.
-    Fixed per the PI's explicit design: total band = statistical ⊕
+    Fixed per the human's explicit design: total band = statistical ⊕
     systematic in quadrature, centered on Phase 1's ensemble mean (a
     band-centering bug — centering on this module's own noisier single-
     trajectory mean instead — caused a second, subtler failure at β=4/β=7,
@@ -1770,7 +1760,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     covered).
   - **`tests/test_orchestrator.py`, 10 tests, all passing. Full suite:
     87/87.**
-  - **Next:** the PI's own flagged forward step now that the loop is
+  - **Next:** the human's own flagged forward step now that the loop is
     complete: a repeated-run convergence-robustness study with REAL agent
     calls (deliberately outside the test suite) — confirm ledgers differ
     across runs (genuine non-determinism) and every converged
@@ -1779,7 +1769,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     the actual entry point for that study.
   - **Built 3.6/3.7 and the study script, same session, before running
     anything real.** Resolved the standing model-string reminder
-    (claude-sonnet-5, PI's choice). `agents/loop.py`: `build_reference_
+    (claude-sonnet-5, human's choice). `agents/loop.py`: `build_reference_
     context()` + `run_one_real_loop()`, deliberately separated so the
     study reuses ONE trajectory across every repetition. **Its own test
     caught a real bug before any API call was made**: a first-draft
@@ -1796,7 +1786,7 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     divergence/UQ-band comparison honestly.
   - **Full suite (fakes only): 90/90 passing.**
   - **Ran the real convergence-robustness study same session, after
-    setup was verified with a 1-run dry test (PI's explicit
+    setup was verified with a 1-run dry test (human's explicit
     instruction).** Fixed two more real bugs first (env-var visibility
     across processes; pydantic-ai's required "anthropic:" model prefix),
     then a third mid-study (Windows-locale write encoding, fixed +
@@ -1808,10 +1798,10 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
     search space on an unrejected first guess. Full diagnosis, bug
     write-ups, and what the study does/doesn't show: §9 (new dated entry
     below) and `results/phase3_convergence_study_report.md`.
-  - **Next:** PI decision on whether/how to re-run the study to actually
+  - **Next:** human decision on whether/how to re-run the study to actually
     test path diversity (report's suggested lever: a tighter rate
     tolerance that forces a real rejection). Otherwise, Phase 4.
-  - **PI redirected the fix, same session: not a tighter tolerance
+  - **Human redirected the fix, same session: not a tighter tolerance
     (would manufacture a rejection against a right answer), but stop
     handing the Optimizer the solved lag value at all -- give it only
     the valid range.** Redesigned `SearchBounds` accordingly, surfaced

@@ -12,7 +12,7 @@ The benchmark system used in this project is a stochastic double well, dx = −V
 
 Phase 4 (not yet attempted) applies the same verified pipeline to a 2D stochastic Allen-Cahn field — still a scalar double-well system, now spatially extended — with a tilt parameter breaking its symmetry the same way Phase 1's `b` does, as a qualitative stress test of the methodology at higher dimensionality.
 
-**This is explicitly not a model of real moiré domain-wall physics, and the gap is worth stating precisely rather than glossing over.** Twisted-bilayer-graphene stacking domains are governed by a 2-component displacement field on a landscape with three-fold (AA/AB/BA) symmetry set by the generalized stacking-fault energy — not a scalar double well — and domain-wall relaxation there is an elastic soliton-network problem, not single-particle thermal hopping between two Boltzmann-weighted minima. Nothing in this project's model is derived from moiré elasticity; the tilt parameter is a reasonable toy stand-in for breaking a symmetry, no more.
+**This is explicitly not a model of real moiré domain-wall physics.** Twisted-bilayer-graphene stacking domains are governed by a 2-component displacement field on a landscape with three-fold (AA/AB/BA) symmetry set by the generalized stacking-fault energy — not a scalar double well — and domain-wall relaxation there is an elastic soliton-network problem, not single-particle thermal hopping between two Boltzmann-weighted minima. Nothing in this project's model is derived from moiré elasticity; the tilt parameter is a reasonable toy stand-in for breaking a symmetry, no more.
 
 The actual connection is motivation, not derivation: moiré materials are a real system where verified, uncertainty-quantified switching-rate extraction would matter. This project demonstrates that methodology on a textbook benchmark chosen because its ground truth is *exactly known*, not because it resembles the target system's microscopic physics. Building a model that actually derives from moiré elasticity would be a distinct, substantially larger undertaking than what's demonstrated here.
 
@@ -20,10 +20,10 @@ The actual connection is motivation, not derivation: moiré materials are a real
 
 | Phase | What it does | Status |
 |---|---|---|
-| **1 — Verified engine** | 0-D stochastic double well; MSM recovers exactly two macrostates; extracted rate matches the exact Eyring-Kramers law (prefactor included) | **Complete** |
-| **2 — Uncertainty quantification** | BayesianMSM credible intervals combined with Phase 1's measured systematic bias into an honest total error budget | **Complete** |
-| **3 — Agentic loop** | Orchestrator / Optimizer / Validator loop proposes, runs, and verifies analysis configurations autonomously, against the same physics from Phase 1/2 | **Complete, demonstrated with real LLM calls** |
-| **4 — 2D deployment** | Same verified pipeline applied to a 2D Allen-Cahn field with a symmetry-breaking tilt (a toy stand-in, not a moiré-elasticity model — see above); qualitative validation against the Phase 1 reference | Not complete |
+| **1 - Verified engine** | 0-D stochastic double well; MSM recovers exactly two macrostates; extracted rate matches the exact Eyring-Kramers law (prefactor included) | **Complete** |
+| **2 - Uncertainty quantification** | BayesianMSM credible intervals combined with Phase 1's measured systematic bias into an honest total error budget | **Complete** |
+| **3 - Agentic loop** | Orchestrator / Optimizer / Validator loop proposes, runs, and verifies analysis configurations autonomously, against the same physics from Phase 1/2 | **Complete, demonstrated with real LLM calls** |
+| **4 - 2D deployment** | Same verified pipeline applied to a 2D Allen-Cahn field with a symmetry-breaking tilt (a toy stand-in, not a moiré-elasticity model — see above); qualitative validation against the Phase 1 reference | Not complete |
 
 The three agents in Phase 3, and how they map onto Ax-Prover:
 
@@ -57,7 +57,7 @@ Different debates, same verification standard, consistent accepted physics. This
 
 ![Convergence study](results/phase3_convergence_study.png)
 
-**One asymmetry worth stating explicitly, not left for a reader to notice first**: in these 4 runs, every rejection and every accepted rate happened to sit on the same side of the analytical value (measured low) — the plot above shows it directly. That's a real, one-sided gap in what this particular batch demonstrates about the Validator, not a bug. It was checked directly against the real pipeline (no LLM call needed): a lag time short enough to sit below the system's mixing time gives a real, well-posed config that *overestimates* the rate by as much as 82%, and the Validator's actual check function rejects it — confirming the gate is symmetric, from real data rather than assumption. Full investigation in `results/phase3_convergence_study_report.md`; locked in as a permanent test in `tests/test_tools.py`.
+**One asymmetry worth stating explicitly**: in these 4 runs, every rejection and every accepted rate happened to sit on the same side of the analytical value (measured low) — the plot above shows it directly. That's a real, one-sided gap in what this particular batch demonstrates about the Validator, not a bug. It was checked directly against the real pipeline (no LLM call needed): a lag time short enough to sit below the system's mixing time gives a real, well-posed config that *overestimates* the rate by as much as 82%, and the Validator's actual check function rejects it — confirming the gate is symmetric, from real data rather than assumption. Full investigation in `results/phase3_convergence_study_report.md`; locked in as a permanent test in `tests/test_tools.py`.
 
 Full narrative in `results/phase3_convergence_study_report.md`; every run's ledger is in `results/phase3_convergence_study/`.
 

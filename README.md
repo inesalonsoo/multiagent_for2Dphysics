@@ -8,7 +8,13 @@ This project asks the following question: can a multi-agent LLM system be truste
 
 The benchmark system used in this project is a stochastic double well, dx = −V'(x)dt + √(2/β)dW — the textbook 1-DOF Kramers problem, chosen deliberately because it is one of the few stochastic systems where both the escape rate (Eyring-Kramers, prefactor included) and the equilibrium population ratio (Boltzmann) are exact and closed-form. A Markov State Model (MSM) pipeline is built on trajectory data from this system; its output is checked against those exact answers, not against another model or a fit. Phase 2 adds an honest statistical + systematic error budget on top of that check. Phase 3 wraps the whole pipeline in a three-agent architecture — Orchestrator / Optimizer / Validator, mirroring the Prover/Verifier separation of [Axiomatic AI's Ax-Prover](https://arxiv.org/abs/2510.12787) (Koppens et al.), where an LLM proposes analysis configurations and a second, independent process grounded in the same closed-form physics decides whether to accept them. The LLM never gets to grade its own work.
 
-The eventual target (Phase 4, not yet attempted) is the same verified pipeline applied to a 2D stochastic Allen-Cahn field at small domain size, with a tilt parameter standing in for the asymmetry between stacking domains in twisted bilayer graphene — the moiré materials that motivate this work.
+### Where moiré materials fit — motivation, not derivation
+
+Phase 4 (not yet attempted) applies the same verified pipeline to a 2D stochastic Allen-Cahn field — still a scalar double-well system, now spatially extended — with a tilt parameter breaking its symmetry the same way Phase 1's `b` does, as a qualitative stress test of the methodology at higher dimensionality.
+
+**This is explicitly not a model of real moiré domain-wall physics, and the gap is worth stating precisely rather than glossing over.** Twisted-bilayer-graphene stacking domains are governed by a 2-component displacement field on a landscape with three-fold (AA/AB/BA) symmetry set by the generalized stacking-fault energy — not a scalar double well — and domain-wall relaxation there is an elastic soliton-network problem, not single-particle thermal hopping between two Boltzmann-weighted minima. Nothing in this project's model is derived from moiré elasticity; the tilt parameter is a reasonable toy stand-in for breaking a symmetry, no more.
+
+The actual connection is motivation, not derivation: moiré materials are a real system where verified, uncertainty-quantified switching-rate extraction would matter. This project demonstrates that methodology on a textbook benchmark chosen because its ground truth is *exactly known*, not because it resembles the target system's microscopic physics. Building a model that actually derives from moiré elasticity would be a distinct, substantially larger undertaking than what's demonstrated here.
 
 ## Architecture
 
@@ -17,7 +23,7 @@ The eventual target (Phase 4, not yet attempted) is the same verified pipeline a
 | **1 — Verified engine** | 0-D stochastic double well; MSM recovers exactly two macrostates; extracted rate matches the exact Eyring-Kramers law (prefactor included) | **Complete** |
 | **2 — Uncertainty quantification** | BayesianMSM credible intervals combined with Phase 1's measured systematic bias into an honest total error budget | **Complete** |
 | **3 — Agentic loop** | Orchestrator / Optimizer / Validator loop proposes, runs, and verifies analysis configurations autonomously, against the same physics from Phase 1/2 | **Complete, demonstrated with real LLM calls** |
-| **4 — 2D deployment** | Same verified pipeline applied to a 2D Allen-Cahn field with a tilt (moiré stand-in); qualitative validation against the Phase 1 reference | Not complete |
+| **4 — 2D deployment** | Same verified pipeline applied to a 2D Allen-Cahn field with a symmetry-breaking tilt (a toy stand-in, not a moiré-elasticity model — see above); qualitative validation against the Phase 1 reference | Not complete |
 
 The three agents in Phase 3, and how they map onto Ax-Prover:
 
@@ -31,7 +37,9 @@ The three agents in Phase 3, and how they map onto Ax-Prover:
 
 Sweeping β = 3–10, the MSM-extracted relaxation rate follows log(rate) vs. β with slope **−0.981** against the exact analytical slope of −1 (**1.87% deviation**), and the equilibrium population ratio matches exp(−βΔF) exactly at the symmetric point. Two real methodological bugs were found and fixed en route (sparse-transition-count bias at high β, and an under-converged MSM lag time) — documented in `PROJECT_STATE.md`.
 
-![Arrhenius plot](results/arrhenius.png)
+The top panel below is the classic log-rate view; on a 3-decade log scale, the 1–9% statistical/systematic deviations Phase 2 actually quantifies are visually invisible — the bottom panel plots that deviation directly, on a linear scale, which is the panel that actually carries Phase 2's error-budget result.
+
+![Arrhenius plot, with residual panel](results/arrhenius.png)
 
 ### Phase 2 — the uncertainty
 
@@ -49,6 +57,8 @@ Different debates, same verification standard, consistent accepted physics. This
 
 ![Convergence study](results/phase3_convergence_study.png)
 
+**One asymmetry worth stating explicitly, not left for a reader to notice first**: in these 4 runs, every rejection and every accepted rate happened to sit on the same side of the analytical value (measured low) — the plot above shows it directly. That's a real, one-sided gap in what this particular batch demonstrates about the Validator, not a bug. It was checked directly against the real pipeline (no LLM call needed): a lag time short enough to sit below the system's mixing time gives a real, well-posed config that *overestimates* the rate by as much as 82%, and the Validator's actual check function rejects it — confirming the gate is symmetric, from real data rather than assumption. Full investigation in `results/phase3_convergence_study_report.md`; locked in as a permanent test in `tests/test_tools.py`.
+
 Full narrative in `results/phase3_convergence_study_report.md`; every run's ledger is in `results/phase3_convergence_study/`.
 
 ## Repository structure
@@ -58,7 +68,7 @@ physics/       the environment: potential, 0-D/2D integrators, closed-form known
 pipeline/      the analysis: clustering, MSM construction, Bayesian UQ
 agents/        the three-agent loop: schemas, deterministic tool, Optimizer, Validator, Orchestrator
 scripts/       phase entry points (run_phase1_benchmark.py, run_phase2_uq.py, run_phase3_agentic.py, ...)
-tests/         known-answer tests, one file per module, 99 tests, all passing
+tests/         known-answer tests, one file per module, 100 tests, all passing
 results/       generated plots, raw sweep data, agent ledgers
 CLAUDE.md          project constitution: engineering discipline and hard boundaries
 PROJECT_STATE.md   full session-by-session working log — every decision, bug, and finding
@@ -72,7 +82,7 @@ cd multiagent_for2Dphysics
 python -m venv .venv
 source .venv/Scripts/activate      # .venv\Scripts\Activate.ps1 on Windows PowerShell
 pip install -r requirements.txt
-pytest tests/ -q                   # 99 tests, no API key required
+pytest tests/ -q                   # 100 tests, no API key required
 ```
 
 Phases 1 and 2 run standalone:

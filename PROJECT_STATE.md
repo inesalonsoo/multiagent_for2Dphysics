@@ -294,6 +294,19 @@ Phase 4 (2D deployment, was Phase 1 before the pivot):
 - [ ] 4.4 scripts/run_phase4_moire_demo.py — qualitative comparison against Phase 1
   0-D reference (same pipeline, same gates, no 2D analytical rate asserted).
 
+Phase 3.5 (Lean oracle for known_answers.py, see CLAUDE.md's "Lean / ax-prover
+scope boundaries"):
+- [x] 3.8 lean/ subproject scaffolded: lakefile.toml (mathlib4 dependency, no
+  rev pinned yet — resolves on first `lake update`), lean-toolchain
+  (v4.27.0, matching ax-prover-base's own regression fixture), and
+  lean/Oracle/Potential.lean (7 theorems, all ending in `sorry` — Claude
+  Code writes statements only, per CLAUDE.md; ax-prover writes proofs).
+  + tests/test_lean_oracle_consistency.py.
+- [ ] 3.9 Actually run `cd lean && lake exe cache get && lake build &&
+  ax-prover prove Oracle.Potential --folder . -o ../results/lean_oracle_prove_output.json`
+  to discharge the 7 sorries — NOT done this session (real LLM calls + a
+  multi-GB Mathlib cache fetch, deliberately deferred, see §9).
+
 ## 8. Key references to check work against
 
 - ★ arXiv:1507.05577 (Rolland, Bouchet & Simonnet 2015, "Computing transition rates
@@ -1326,6 +1339,130 @@ Always open a reference and confirm it says what we assume before relying on it.
     is Phase 4 deployment work, correctly left for when that deployment
     actually starts, not built ahead of it here.
   - **Full suite: 99/99 passing.**
+- **[2026-07-17] README review: three real findings from the human actually
+  reading the artifacts closely, all fixed. Two were about presentation
+  honestly hiding/overstating real work already done; one was a genuine
+  empirical gap the human caught by reading a plot for ~10 seconds.**
+  - **1. Moiré-materials framing in README.md overclaimed a physics
+    connection that doesn't exist.** The README said the project was
+    "built as a path toward characterizing switching dynamics in
+    moiré... materials" and described the tilt as "standing in for the
+    asymmetry between stacking domains" — language that implies physical
+    correspondence. The human's correction, verified against real moiré physics:
+    twisted-bilayer-graphene stacking domains are governed by a
+    2-COMPONENT displacement field on a landscape with THREE-FOLD
+    (AA/AB/BA) symmetry from the generalized stacking-fault energy, and
+    domain-wall relaxation is an ELASTIC SOLITON-NETWORK problem — not a
+    scalar double well, not single-particle thermal hopping. Nothing in
+    this project's model derives from moiré elasticity; `b` is a toy
+    symmetry-breaking stand-in, no more. Fixed: README now states this
+    gap explicitly and precisely (own subsection, "Where moiré materials
+    fit — motivation, not derivation") rather than eliding it — this is a
+    demonstration of the *methodology* (verified agentic pipeline
+    discovery), with moiré materials as motivation for why the
+    methodology matters, not something the current model represents.
+    CLAUDE.md/this file's own internal language ("motivating target
+    application," "moiré-flavored asymmetry") was checked and already
+    appropriately hedged — the overclaim was specific to the public-
+    facing README, not the internal working docs, so only README.md
+    needed the fix.
+  - **2. `results/arrhenius.png` visually hid the entire Phase 2 UQ story
+    it exists to tell.** On a 3-decade log scale, 1-9% statistical/
+    systematic bands are indistinguishable from the analytical line —
+    exactly the failure mode a plot review should catch: Phase 2's whole
+    contribution (an honest error budget) was invisible in its own
+    headline figure. Fixed in `scripts/run_phase2_uq.py::
+    make_arrhenius_plot_with_credible_intervals`: now a two-panel figure
+    (small multiples sharing the beta axis, NOT a dual-axis chart — see
+    the function's own docstring for why that distinction matters) —
+    top panel unchanged (log rate), bottom panel NEW: percent deviation
+    from the analytical rate, linear scale, centered on 0%, computed from
+    the actual band bounds (not approximated). Regenerated `results/
+    arrhenius.png` from the already-cached `arrhenius_sweep_raw.npz`/
+    `uq_sweep_raw.npz` (no re-run of the expensive sweep needed). The
+    residual panel itself surfaced a nice piece of context for finding 3
+    below: across the FULL beta sweep (fixed config, varying beta),
+    deviations go both positive (+17% at beta=9) and negative (-3% to
+    -7% at beta=3-6) -- unlike the Phase 3 study's narrower slice.
+  - **3. The Phase 3 convergence study's symmetry claim was one-sided,
+    and the plot showed it in about 10 seconds of looking.** All 20
+    rejected iterations and all 4 accepted configs across the 4 real
+    runs sat on the SAME side of the analytical rate (measured low) --
+    genuine evidence the Validator rejects an underestimate, ZERO
+    evidence it would catch an overestimate. The human explicitly rejected the
+    tempting fix (tighten the tolerance until something fails) as
+    manufacturing a rejection against a right answer, proving nothing.
+    **Instead, searched for and found a real, well-posed overestimating
+    config directly against the real pipeline, no LLM call needed:**
+    scanning `msm_lagtime` below the system's mixing time on the same
+    real reference trajectory (beta=5.0, seed=7) gives ratios up to 1.82x
+    analytical at lag=1, crossing back under the +3.16% tolerance around
+    lag=15-20. Matches standard MSM implied-timescale theory (Prinz et
+    al. 2011): a too-short lag underestimates the implied timescale,
+    which means it OVERestimates the rate -- the mirror image of the
+    too-long-lag underestimate the 4 real runs already exercised.
+    Confirmed formally by calling `agents.validator.
+    _compute_physics_checks` directly (the real function, not a
+    re-implementation) on lag=10,8,5,3: all four correctly rejected
+    (`rate_matches_analytical=False`). **Net: the gate is symmetric,
+    confirmed against real data, not assumed** -- but stated honestly
+    that no *real agentic run* has yet produced/accepted an
+    overestimating config; only this direct check has. Locked in as
+    `tests/test_tools.py::test_run_msm_pipeline_can_overestimate_the_
+    rate_at_a_too_short_lag` (same qualitative pattern reproduced on the
+    smaller/faster 750k-step trajectory already used elsewhere in the
+    suite). `results/phase3_convergence_study_report.md` and README.md's
+    Phase 3 section both updated with the caveat and the finding,
+    stated plainly rather than left for a reader to notice first.
+  - **Full suite: 100/100 passing.**
+
+- **[2026-07-27] Phase 3.5 (Lean oracle scaffold — plan-then-build session):**
+  `physics/known_answers.py`'s constants (curvature 8A/-4A, ΔV=A, wells at
+  ±1, ΔF=0 at b=0) are hand-derived in docstrings and hardcoded as float
+  literals; nothing tested that the derivations themselves are correct. Read
+  through plan mode first (per CLAUDE.md's Lean/ax-prover scope boundaries),
+  then built the scaffold with two corrections from the human along the way:
+  1. **"No Mathlib" isn't a real option.** Lean core alone has no `ℝ` or
+     `ring`/`norm_num`; any statement over the reals already needs Mathlib.
+     So the theorem set was restructured to make the numeric facts
+     (curvature, critical points, barrier height, symmetry) COROLLARIES of
+     two foundational `HasDerivAt` theorems (`V_hasDerivAt`, `V'_hasDerivAt`)
+     rather than parallel, independently-stated literals — a wrong
+     differentiation can't be papered over by a correct-looking
+     substitution, since the corollaries are stated in terms of `deriv`.
+  2. **The consistency test was split by lifecycle, not left as one
+     skip-everything file.** Test Group A (3 tests in
+     `tests/test_lean_oracle_consistency.py`) runs today with zero Lean/LLM
+     dependency and already adds real regression coverage: it recovers the
+     implicit 8A/4A prefactor from `eyring_kramers_rate_0d`'s actual OUTPUT
+     (never literal-vs-literal, which would miss an edited constant),
+     recomputes `potential_derivative`'s formula independently at sample
+     points, and re-checks the b=0 well/ΔF values. Test Group B (2 tests)
+     is gated on `results/lean_oracle_prove_output.json` existing (the
+     signal that `ax-prover prove` was actually attempted), not on the
+     `.lean` file existing — the scaffolded file with its `sorry`
+     placeholders exists from the moment it's written, long before anyone
+     runs the prover, so gating the "no remaining sorry" check on the
+     source file's mere existence would fail immediately rather than skip.
+  - **Built:** `lean/lakefile.toml` (package `oracle`, requires `mathlib4`,
+    no `rev` pinned — resolves on first `lake update`), `lean/lean-toolchain`
+    (`v4.27.0`, matching `ax-prover-base`'s own `tests/regression/fixtures/
+    lean_minimal` toolchain), `lean/Oracle/Potential.lean` (`V`, `V'` defs +
+    7 theorems, all ending in `sorry`), `tests/test_lean_oracle_consistency.py`.
+  - **Hit and fixed one real bug immediately:** `Path.read_text()` defaults
+    to the Windows `cp1252` codepage, which cannot decode the `ℝ` character
+    in the Lean source — both `read_text()` calls now pass
+    `encoding="utf-8"` explicitly.
+  - **Checks:** Group A's 3 tests pass now. Group B's 2 tests correctly
+    SKIP (not fail, not silently pass) with the exact command to run
+    printed in the skip reason. Full suite: 103 passed, 2 skipped, ~177s —
+    nothing else affected.
+  - **Deliberately NOT done this session:** running `lake exe cache get &&
+    lake build` (multi-GB Mathlib fetch) or `ax-prover prove` (real LLM
+    calls) — per CLAUDE.md's "Claude Code writes statements ending in
+    `sorry`, ax-prover writes proofs" and the plan's explicit "scaffold
+    only" decision. Module 3.9 (§7) is the follow-up task that actually
+    runs those commands and archives the resulting JSON.
 
 ## 10. Current status
 
@@ -1375,15 +1512,36 @@ Always open a reference and confirm it says what we assume before relying on it.
   (`agents/validator.py`'s dormant socket) deliberately still raises
   `NotImplementedError` — wiring a real tilt and a third hard gate is
   Phase 4 deployment work, not built ahead of it. Full detail in §9.
-- **Last check passed:** full suite `tests/`, 99/99, ~106s (see Session 11 log).
-- **➡️ NEXT TASK:** Phase 4 (2D deployment, corrected L=2.5). Its own
-  first task, per the human's explicit ordering, is NOT a tilted-potential
-  run — `physics/simulate.py` (the 2D field) and its tilt support already
-  exist and are tested (§7 modules 4.1/4.2), but the agentic-loop side of
-  a Phase 4 deployment still needs `agents/validator.py`'s Boltzmann
-  check actually implemented and wired into `ValidatorDecision` (using
-  the well-identity tracking just built) before module 4.3's visual
-  switching check or module 4.4's demo script make sense to attempt.
+- **Last completed (3):** review of the pushed README and result
+  artifacts caught three real issues, all fixed same session: the
+  moiré-materials framing overclaimed a physics connection real moiré
+  elasticity doesn't support (README now states the gap explicitly, own
+  subsection); `results/arrhenius.png` visually hid the entire Phase 2 UQ
+  story on its 3-decade log scale (now a two-panel figure with a linear
+  percent-deviation panel, regenerated from cached data); and the Phase 3
+  convergence study's "verifier is symmetric" claim was one-sided in
+  practice (all 4 real runs only ever saw underestimate-side rejections)
+  — closed by finding a real overestimating config (short lag, up to
+  1.82x analytical) directly against the real pipeline and confirming the
+  real Validator check function rejects it, now a permanent test. Full
+  detail in §9.
+- **Last check passed:** full suite `tests/`, 103 passed / 2 skipped, ~177s
+  (the 2 skips are the new Lean-oracle Group B tests, gated on ax-prover
+  actually having run — see the 2026-07-27 §9 entry).
+- **➡️ NEXT TASK:** two independent tracks, either can go first:
+  1. **Module 3.9 (Phase 3.5 side track):** run `cd lean && lake exe cache
+     get && lake build && ax-prover prove Oracle.Potential --folder . -o
+     ../results/lean_oracle_prove_output.json` to discharge the 7 `sorry`s
+     in `lean/Oracle/Potential.lean`, which flips `tests/test_lean_oracle_
+     consistency.py`'s 2 skipped tests to passing.
+  2. **Phase 4 (2D deployment, corrected L=2.5)**, per the human's earlier
+     explicit ordering. Its own first task is NOT a tilted-potential run —
+     `physics/simulate.py` (the 2D field) and its tilt support already
+     exist and are tested (§7 modules 4.1/4.2), but the agentic-loop side
+     of a Phase 4 deployment still needs `agents/validator.py`'s Boltzmann
+     check actually implemented and wired into `ValidatorDecision` (using
+     the well-identity tracking already built) before module 4.3's visual
+     switching check or module 4.4's demo script make sense to attempt.
 
 ---
 

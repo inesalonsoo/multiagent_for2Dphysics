@@ -44,6 +44,15 @@ turned out to give a genuinely biased rate.
 in this single 4-run batch.** This is the real two-sided claim: divergent
 search paths, genuinely different accepted configs, bounded outcome anyway.
 
+**One caveat, addressed below, not hidden**: all 20 rejections and all 4
+accepted configs in these particular 4 runs happened to sit on the same
+side of the analytical rate (measured low). That made the demonstrated
+rejections one-directional even though the search paths themselves were
+genuinely varied. See "A real gap in what these 4 runs demonstrated, and
+how it was closed" below — checked directly against the real pipeline and
+confirmed the gate rejects an overestimate too, from real data, not
+assumed.
+
 ## The four runs, in full
 
 | Run | Iterations | Path (n_clusters, msm_lagtime) | Accepted config | Accepted rate |
@@ -74,6 +83,62 @@ was **rejected** in run 1 (rate 0.011692, just below the band), while
 just inside it) — nearly the same lag, different cluster count, different
 outcome. This is a real illustration that the gate responds to the actual
 joint physics of both parameters, not a rigged single-variable threshold.
+
+## A real gap in what these 4 runs demonstrated, and how it was closed
+
+Read plainly, every rejected iteration across all 4 runs, and all 4
+accepted configs, sit on the SAME side of the analytical rate: measured
+rates ranged from 0.0110 to 0.0118, and the analytical value (0.012133)
+sits above all of them. **This is a genuine, one-sided gap in what the
+study demonstrates** — it shows the Validator rejecting an underestimate
+four different ways, but on its own gives zero evidence it would also
+catch an overestimate. A gate that only ever gets tested from one
+direction is not fully demonstrated to be a gate at all; it could
+coincidentally be "reject anything below X" and this batch would look
+identical.
+
+The 4 real runs are not re-run to fix this (the search explored where it
+explored, honestly) — instead, the missing direction was checked directly
+against the real, deterministic pipeline and the real Validator logic, no
+LLM call needed:
+
+```
+lag= 1: ratio to analytical = 1.82  (+82%)
+lag= 2: ratio to analytical = 1.42  (+42%)
+lag= 3: ratio to analytical = 1.27  (+27%)
+lag= 5: ratio to analytical = 1.15  (+15%)
+lag= 8: ratio to analytical = 1.07  ( +7%)
+lag=10: ratio to analytical = 1.05  ( +5%)
+lag=15: ratio to analytical = 1.01  ( +1%, inside tolerance)
+lag=20: ratio to analytical = 1.00  ( 0%, the converged value)
+```
+
+(same reference trajectory, `n_clusters=50`, `beta=5.0`). This matches
+standard MSM implied-timescale theory (Prinz et al., *J. Chem. Phys.*
+2011): a lag time shorter than the system's mixing time UNDERestimates
+the implied timescale, which — since rate = 1/timescale — means it
+OVERestimates the rate. The mechanism is the mirror image of the
+too-long-lag underestimate the 4 real runs already exercised, not a new
+one invented for this check.
+
+Calling `agents.validator._compute_physics_checks` directly (the actual
+function the Validator uses, not a re-implementation) on `lag=10, 8, 5, 3`
+confirms all four are correctly rejected —
+`two_states_recovered=True, rate_matches_analytical=False` — for a real,
+well-posed config landing outside the tolerance band from the OPPOSITE
+side of everything the 4 real runs saw. Now locked in as a permanent
+regression check:
+`tests/test_tools.py::test_run_msm_pipeline_can_overestimate_the_rate_at_a_too_short_lag`.
+
+**Net assessment**: the Validator's gate is symmetric — confirmed against
+real data and the real check function, not assumed. What remains true and
+worth stating plainly: no *real agentic run* has yet produced or accepted
+an overestimating config; the Optimizer's own search, in the 4 runs
+actually performed, only ever explored and got rejected from the
+underestimate side. Demonstrating the LLM itself proposing an
+overestimating config (rather than this being checked directly) would
+need either more real runs or a search space deliberately biased toward
+short lags, neither done here.
 
 ## Evidence the Optimizer is genuinely reasoning, not guessing blindly
 

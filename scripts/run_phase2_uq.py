@@ -248,16 +248,33 @@ def check_tight_interval_matches_trustworthy_regime(rate_mean, rate_lower, rate_
 def make_arrhenius_plot_with_credible_intervals(phase1_mean_rate, statistical_relative,
                                                   total_lower, total_upper, out_path):
     """
-    Upgraded Arrhenius figure: every point carries BOTH its statistical
-    band (thin, dark error bar -- Bayesian sampling uncertainty only)
-    and its total statistical+systematic band (wide, light shaded
-    whisker -- what the gate actually checks against, see the GATE note
-    at the top of this file). Showing both, not just the total, keeps
-    honest which part of the uncertainty is "we measured this precisely"
-    vs "and there's also a known systematic on top". Both bands are
+    Two-panel Arrhenius figure -- NOT a dual-axis chart (that would make
+    the two panels' scales arbitrarily comparable, which is exactly the
+    anti-pattern this avoids): two stacked, single-axis panels sharing
+    the beta axis, each doing one job.
+
+    TOP panel: log(rate) vs beta, the traditional Arrhenius view -- this
+    is where the exact-slope claim (Gate 2) lives, and log scale is the
+    right call because the rate spans ~3 decades over the sweep.
+
+    BOTTOM panel: percent deviation from the analytical rate, LINEAR
+    scale, centered on 0%. This is the panel Phase 2 was actually built
+    to produce. On a 3-decade log scale, statistical/systematic bands of
+    order 1-9% are visually indistinguishable from the analytical line --
+    correct, but it makes Phase 2's own result invisible. A linear
+    residual panel is the standard fix: it is the plot that actually
+    carries the honest-uncertainty story, not a decoration on top of the
+    log plot.
+
+    Every point still carries BOTH its statistical band (thin, dark --
+    Bayesian sampling uncertainty only) and its total statistical+
+    systematic band (wide, light -- what the gate actually checks
+    against, see the GATE note at the top of this file). Both bands are
     centered on phase1_mean_rate (see build_total_error_band()'s
-    docstring for why). Same fit-range/excluded-range marker distinction
-    as Phase 1's plot.
+    docstring for why). Same fit-range/excluded-range color/marker
+    distinction as Phase 1's plot, shared across both panels so a point
+    means the same thing in both -- one legend, on the top panel, covers
+    both.
     """
     in_fit = BETA_VALUES <= FIT_BETA_MAX
     stat_lower_err = phase1_mean_rate * statistical_relative
@@ -265,40 +282,64 @@ def make_arrhenius_plot_with_credible_intervals(phase1_mean_rate, statistical_re
     total_lower_err = phase1_mean_rate - total_lower
     total_upper_err = total_upper - phase1_mean_rate
 
+    analytical_rate_at_points = 2.0 * np.array(
+        [eyring_kramers_rate_0d(beta=b, A=BARRIER_HEIGHT) for b in BETA_VALUES]
+    )
+    # Percent deviation of each band's edges from the analytical rate --
+    # computed from the actual bounds (not approximated as +/- a fixed
+    # percent), so a highly asymmetric band still plots correctly.
+    percent_deviation = (phase1_mean_rate / analytical_rate_at_points - 1.0) * 100.0
+    stat_deviation_lower_err = (stat_lower_err / analytical_rate_at_points) * 100.0
+    stat_deviation_upper_err = (stat_upper_err / analytical_rate_at_points) * 100.0
+    total_deviation_lower_err = (total_lower_err / analytical_rate_at_points) * 100.0
+    total_deviation_upper_err = (total_upper_err / analytical_rate_at_points) * 100.0
+
     beta_fine = np.linspace(BETA_VALUES.min(), BETA_VALUES.max(), 200)
-    analytical_rate = 2.0 * np.array(
+    analytical_rate_fine = 2.0 * np.array(
         [eyring_kramers_rate_0d(beta=b, A=BARRIER_HEIGHT) for b in beta_fine]
     )
 
-    fig, ax = plt.subplots(figsize=(8, 5.5))
-    # Total (statistical + systematic) band first, wide and light, so the
-    # tighter statistical error bar draws on top of it. Both centered on
-    # phase1_mean_rate -- see this function's docstring for why.
-    ax.errorbar(BETA_VALUES[in_fit], phase1_mean_rate[in_fit],
-                yerr=[total_lower_err[in_fit], total_upper_err[in_fit]],
-                fmt="none", color="tab:blue", alpha=0.35, capsize=5, linewidth=4,
-                label=f"total band (statistical $\\oplus$ systematic), $\\beta\\leq${FIT_BETA_MAX}")
-    ax.errorbar(BETA_VALUES[in_fit], phase1_mean_rate[in_fit],
-                yerr=[stat_lower_err[in_fit], stat_upper_err[in_fit]],
-                fmt="o", color="tab:blue", capsize=3,
-                label=f"MSM rate, statistical-only 90% CI ($\\beta \\leq${FIT_BETA_MAX})")
-    ax.errorbar(BETA_VALUES[~in_fit], phase1_mean_rate[~in_fit],
-                yerr=[stat_lower_err[~in_fit], stat_upper_err[~in_fit]],
-                fmt="^", color="tab:orange", capsize=3,
-                label=f"measured, excluded from fit ($\\beta >${FIT_BETA_MAX})")
-    ax.plot(beta_fine, analytical_rate, color="tab:red", linestyle="--",
-            label=r"$2 \times$ Eyring-Kramers escape rate (exact, slope $-A$)")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"inverse temperature $\beta$")
-    ax.set_ylabel("relaxation rate (1 / time)")
-    ax.set_title("Phase 2: 0-D double-well Arrhenius plot, with Bayesian UQ", fontsize=13)
-    ax.text(0.5, 1.06, "statistical 90% CI (BayesianMSM) shown alongside the total "
-            "band (+ Phase 1's measured systematic, in quadrature)",
-            transform=ax.transAxes, ha="center", fontsize=9.5, color="dimgray")
-    ax.legend(loc="upper right", fontsize=8)
+    fig, (ax_top, ax_bottom) = plt.subplots(
+        2, 1, figsize=(8, 8.5), sharex=True, height_ratios=[2.2, 1.3],
+    )
+
+    # --- Top panel: log(rate) vs beta ---------------------------------
+    ax_top.errorbar(BETA_VALUES[in_fit], phase1_mean_rate[in_fit],
+                     yerr=[total_lower_err[in_fit], total_upper_err[in_fit]],
+                     fmt="none", color="tab:blue", alpha=0.35, capsize=5, linewidth=4,
+                     label=f"total band (statistical $\\oplus$ systematic), $\\beta\\leq${FIT_BETA_MAX}")
+    ax_top.errorbar(BETA_VALUES[in_fit], phase1_mean_rate[in_fit],
+                     yerr=[stat_lower_err[in_fit], stat_upper_err[in_fit]],
+                     fmt="o", color="tab:blue", capsize=3,
+                     label=f"MSM rate, statistical-only 90% CI ($\\beta \\leq${FIT_BETA_MAX})")
+    ax_top.errorbar(BETA_VALUES[~in_fit], phase1_mean_rate[~in_fit],
+                     yerr=[stat_lower_err[~in_fit], stat_upper_err[~in_fit]],
+                     fmt="^", color="tab:orange", capsize=3,
+                     label=f"measured, excluded from fit ($\\beta >${FIT_BETA_MAX})")
+    ax_top.plot(beta_fine, analytical_rate_fine, color="tab:red", linestyle="--",
+                label=r"$2 \times$ Eyring-Kramers escape rate (exact, slope $-A$)")
+    ax_top.set_yscale("log")
+    ax_top.set_ylabel("relaxation rate (1 / time)")
+    ax_top.set_title("Phase 2: 0-D double-well Arrhenius plot, with Bayesian UQ", fontsize=13)
+    ax_top.legend(loc="upper right", fontsize=8)
+
+    # --- Bottom panel: % deviation from analytical, linear scale ------
+    ax_bottom.axhline(0.0, color="dimgray", linestyle=":", linewidth=1.2, zorder=1)
+    ax_bottom.errorbar(BETA_VALUES[in_fit], percent_deviation[in_fit],
+                        yerr=[total_deviation_lower_err[in_fit], total_deviation_upper_err[in_fit]],
+                        fmt="none", color="tab:blue", alpha=0.35, capsize=5, linewidth=4)
+    ax_bottom.errorbar(BETA_VALUES[in_fit], percent_deviation[in_fit],
+                        yerr=[stat_deviation_lower_err[in_fit], stat_deviation_upper_err[in_fit]],
+                        fmt="o", color="tab:blue", capsize=3)
+    ax_bottom.errorbar(BETA_VALUES[~in_fit], percent_deviation[~in_fit],
+                        yerr=[stat_deviation_lower_err[~in_fit], stat_deviation_upper_err[~in_fit]],
+                        fmt="^", color="tab:orange", capsize=3)
+    ax_bottom.set_xlabel(r"inverse temperature $\beta$")
+    ax_bottom.set_ylabel("deviation from\nanalytical rate (%)")
+
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
-    print(f"saved Arrhenius plot (with credible intervals) to {out_path}")
+    print(f"saved Arrhenius plot (with credible intervals + residual panel) to {out_path}")
 
 
 def main():

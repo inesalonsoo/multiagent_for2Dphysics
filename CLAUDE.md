@@ -125,6 +125,27 @@ Phase 4 (2D stochastic Allen-Cahn field, deployment target):
   verification setup than the one being borrowed from, not a weaker copy of it.
   Full reasoning: PROJECT_STATE.md §9 (2026-07-11 entry).
 
+## Lean / ax-prover scope boundaries (Phase 3.5)
+
+IN SCOPE: formally verifying the *algebraic landscape facts* that
+physics/known_answers.py currently asserts in docstrings — barrier height,
+critical-point locations at b=0, second derivatives (8A at wells, -4A at
+saddle), and the b=0 symmetry giving ΔF=0.
+
+OUT OF SCOPE — do not attempt, do not scaffold toward:
+- Proving the Eyring-Kramers rate formula itself (Fokker-Planck spectral
+  asymptotics; not in Mathlib).
+- Any theorem about the MSM estimator's statistical convergence. Not a
+  theorem — a category error.
+- 2D Allen-Cahn / Rolland-Bouchet Eq. 13 (infinite-dim Hessian dets).
+- Exact well positions for b != 0: those are irrational cubic roots,
+  which is *why* known_answers.py uses brentq. For tilted case the only
+  honest Lean statement is qualitative: sign(ΔF) vs sign(b), and ΔF=0 iff b=0.
+
+Claude Code writes theorem STATEMENTS ending in `sorry`. It does not write
+proof bodies. ax-prover writes proofs.
+
+
 ## ARCHITECTURE
 
 moire-msm-engine/

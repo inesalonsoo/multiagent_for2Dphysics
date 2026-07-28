@@ -11,6 +11,7 @@ import numpy as np
 
 from agents.schemas import PipelineConfig
 from agents.tools import run_msm_pipeline
+from physics.known_answers import eyring_kramers_rate_0d
 from physics.simulate_0d import run_trajectory_0d
 
 DT = 0.01
@@ -77,6 +78,34 @@ def test_run_msm_pipeline_leaves_well_identity_none_on_ill_posed_config():
     result = run_msm_pipeline(degenerate_config, tiny_trajectory, DT)
 
     assert result.macrostate_well_identity is None
+
+
+def test_run_msm_pipeline_can_overestimate_the_rate_at_a_too_short_lag():
+    """
+    Known-answer check that the rate bias runs BOTH directions, not just
+    one. The real convergence-robustness study (PROJECT_STATE.md Sec 9)
+    only ever encountered REJECTED configs that UNDERestimated the rate
+    (a too-LONG lag) -- a real, one-sided gap in what had actually been
+    demonstrated, caught by reading results/phase3_convergence_study.png
+    closely. Standard MSM implied-timescale theory (Prinz et al. 2011)
+    predicts the opposite failure mode too: a lag SHORTER than the
+    system's mixing time underestimates the implied timescale, which
+    means it OVERestimates the rate (rate = 1/timescale). Confirmed here
+    on real data: msm_lagtime=1 measures a rate ~1.8x the analytical
+    value -- a real, well-posed (not ill-posed) config that a downstream
+    Validator would correctly REJECT on physics grounds, just from the
+    opposite side of the tolerance band.
+    """
+    config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=1)
+    analytical_rate = 2.0 * eyring_kramers_rate_0d(beta=5.0)
+
+    result = run_msm_pipeline(config, _TRAJECTORY, DT)
+
+    assert result.error is None
+    assert result.n_macrostates_recovered == 2
+    assert result.relaxation_rate_mean > analytical_rate * 1.10, (
+        "expected a real overestimate at this deliberately too-short lag"
+    )
 
 
 def test_run_msm_pipeline_reports_lagtime_ill_posedness_without_raising():

@@ -68,7 +68,7 @@ physics/       the environment: potential, 0-D/2D integrators, closed-form known
 pipeline/      the analysis: clustering, MSM construction, Bayesian UQ
 agents/        the three-agent loop: schemas, deterministic tool, Optimizer, Validator, Orchestrator
 scripts/       phase entry points (run_phase1_benchmark.py, run_phase2_uq.py, run_phase3_agentic.py, ...)
-tests/         known-answer tests, one file per module, 100 tests, all passing
+tests/         known-answer tests, one file per module, 103 passed / 2 skipped (Lean Group B, pending a real ax-prover run)
 results/       generated plots, raw sweep data, agent ledgers
 archive/       superseded artifacts (pre-pivot dead ends, an old study run) — not part of the current pipeline, kept for the record
 CLAUDE.md          project constitution: engineering discipline and hard boundaries
@@ -83,7 +83,7 @@ cd multiagent_for2Dphysics
 python -m venv .venv
 source .venv/Scripts/activate      # .venv\Scripts\Activate.ps1 on Windows PowerShell
 pip install -r requirements.txt
-pytest tests/ -q                   # 100 tests, no API key required
+pytest tests/ -q                   # 103 passed, 2 skipped (Lean Group B, pending a real ax-prover run), no API key required
 ```
 
 Phases 1 and 2 run standalone:

@@ -3,14 +3,15 @@ import Mathlib
 /-!
 # Lean oracle for `physics/known_answers.py`
 
-This file formally states -- but does not prove -- the algebraic landscape
-facts that `physics/known_answers.py` currently asserts only in Python
-docstrings and hardcodes as float literals: the second-derivative curvature
-at the wells (8A) and saddle (-4A), the b=0 critical-point locations
-(x = -1, 0, 1), the barrier height (A), and the b=0 well symmetry (giving
-ΔF=0). Every theorem below ends in `sorry`; `ax-prover` discharges the
+This file formally states the algebraic landscape facts that
+`physics/known_answers.py` currently asserts only in Python docstrings and
+hardcodes as float literals: the second-derivative curvature at the wells
+(8A) and saddle (-4A), the b=0 critical-point locations (x = -1, 0, 1), the
+barrier height (A), and the b=0 well symmetry (giving ΔF=0). Six of the
+seven theorems below still end in `sorry`; `ax-prover` discharges the
 proofs, never Claude Code (see CLAUDE.md's "Lean / ax-prover scope
-boundaries" section).
+boundaries" section). `potential_even_at_b0` (pure algebra, no derivative)
+is the first to be fully proved, via `ax-prover`, 2026-07-30.
 
 Out of scope (see CLAUDE.md): the Eyring-Kramers rate formula itself
 (Fokker-Planck asymptotics, not algebra), any MSM statistical-convergence
@@ -77,6 +78,6 @@ theorem barrier_height_eq (A : ℝ) : V A 0 0 - V A 0 1 = A := by
 Anchors `known_answers.py:137-160` (`free_energy_difference`'s docstring:
 "for b=0, deltaF is exactly zero by the x -> -x symmetry of V"). -/
 theorem potential_even_at_b0 (A x : ℝ) : V A 0 x = V A 0 (-x) := by
-  sorry
+  rw [V, V, neg_sq, zero_mul, zero_mul]
 
 end Oracle.Potential

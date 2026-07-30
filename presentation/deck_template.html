@@ -1,0 +1,638 @@
+<title>Verified Agentic Loop — Presentation Deck</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #1a2028;
+    --ink-soft: #4b5563;
+    --paper: #f5f6f3;
+    --paper-raised: #ffffff;
+    --line: #d8dcd6;
+    --blue: #235a92;
+    --blue-soft: #e7eff6;
+    --orange: #b5620f;
+    --orange-soft: #fbf0e2;
+    --red: #a3302f;
+    --red-soft: #f8e9e8;
+    --green: #2f6b4f;
+    --green-soft: #e8f1ec;
+    --shadow: 0 1px 2px rgba(20,26,34,.06), 0 8px 24px -12px rgba(20,26,34,.12);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e9e4;
+      --ink-soft: #a8afb8;
+      --paper: #14171b;
+      --paper-raised: #1b1f25;
+      --line: #2c323b;
+      --blue: #7fb1e0;
+      --blue-soft: #1c2b3a;
+      --orange: #e0a75e;
+      --orange-soft: #332512;
+      --red: #e2908f;
+      --red-soft: #3a2020;
+      --green: #8fc7a8;
+      --green-soft: #1a2b22;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e8e9e4; --ink-soft: #a8afb8; --paper: #14171b; --paper-raised: #1b1f25;
+    --line: #2c323b; --blue: #7fb1e0; --blue-soft: #1c2b3a; --orange: #e0a75e;
+    --orange-soft: #332512; --red: #e2908f; --red-soft: #3a2020; --green: #8fc7a8;
+    --green-soft: #1a2b22; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+  :root[data-theme="light"] {
+    --ink: #1a2028; --ink-soft: #4b5563; --paper: #f5f6f3; --paper-raised: #ffffff;
+    --line: #d8dcd6; --blue: #235a92; --blue-soft: #e7eff6; --orange: #b5620f;
+    --orange-soft: #fbf0e2; --red: #a3302f; --red-soft: #f8e9e8; --green: #2f6b4f;
+    --green-soft: #e8f1ec; --shadow: 0 1px 2px rgba(20,26,34,.06), 0 8px 24px -12px rgba(20,26,34,.12);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; animation: none !important; }
+  }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .deck {
+    height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory;
+  }
+  .slide {
+    min-height: 100dvh; width: 100%; scroll-snap-align: start; scroll-snap-stop: always;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(28px, 6vw, 76px) clamp(24px, 9vw, 120px);
+    position: relative; opacity: 0; transform: translateY(14px);
+    transition: opacity .55s ease, transform .55s ease;
+  }
+  .slide.in-view { opacity: 1; transform: translateY(0); }
+  .slide-inner { max-width: 980px; margin: 0 auto; width: 100%; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--blue); margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 1px; background: var(--blue); display: inline-block; }
+
+  .display { font-size: clamp(1.7rem, 3.6vw, 2.7rem); line-height: 1.14; letter-spacing: -.01em; }
+  .lead { font-size: clamp(1.02rem, 1.4vw, 1.2rem); color: var(--ink-soft); line-height: 1.55; max-width: 62ch; margin-top: 18px; }
+  .kicker { font-size: .95rem; color: var(--ink-soft); margin-top: 6px; }
+
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 760px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 3px;
+    padding: 20px 22px; box-shadow: var(--shadow);
+  }
+  .card h3 { font-size: 1.02rem; margin-bottom: 8px; }
+  .card p { color: var(--ink-soft); font-size: .93rem; line-height: 1.5; }
+  .card ul { margin: 0; padding-left: 18px; color: var(--ink-soft); font-size: .93rem; line-height: 1.5; }
+  .card ul li { margin-bottom: 4px; }
+  .card ul li:last-child { margin-bottom: 0; }
+
+  .callout {
+    border-left: 3px solid var(--blue); background: var(--blue-soft); padding: 14px 18px;
+    border-radius: 0 3px 3px 0; font-size: .92rem; line-height: 1.55; color: var(--ink);
+  }
+  .callout.caution { border-color: var(--orange); background: var(--orange-soft); }
+  .callout.good { border-color: var(--green); background: var(--green-soft); }
+  .callout .tag {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--orange); display: block; margin-bottom: 6px; font-weight: 600;
+  }
+  .callout.good .tag { color: var(--green); }
+  .callout.blue-tag .tag { color: var(--blue); }
+
+  table.data { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  table.data th, table.data td {
+    text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line);
+  }
+  table.data th { font-family: var(--mono); font-size: .7rem; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); font-weight: 500; }
+  table.data td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .fig { border: 1px solid var(--line); border-radius: 3px; overflow: hidden; background: var(--paper-raised); box-shadow: var(--shadow); }
+  .fig img { display: block; width: 100%; height: auto; }
+  .fig-cap { padding: 10px 16px; font-size: .82rem; color: var(--ink-soft); border-top: 1px solid var(--line); line-height: 1.5; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: .72rem;
+    padding: 3px 10px; border-radius: 20px; border: 1px solid var(--line); color: var(--ink-soft);
+  }
+  .pill.on { color: var(--green); border-color: var(--green); background: var(--green-soft); }
+
+  /* Architecture diagram */
+  .arch { display: flex; flex-direction: column; align-items: center; gap: 0; margin-top: 8px; }
+  .arch-row { display: flex; justify-content: center; gap: 34px; width: 100%; }
+  .arch-box {
+    flex: 1; max-width: 240px; background: var(--paper-raised); border: 1.5px solid var(--blue);
+    border-radius: 4px; padding: 14px 16px; text-align: center; box-shadow: var(--shadow);
+  }
+  .arch-box.orchestrator { border-color: var(--ink-soft); }
+  .arch-box h4 { font-family: var(--serif); font-size: 1rem; margin-bottom: 4px; }
+  .arch-box .role { font-family: var(--mono); font-size: .68rem; color: var(--ink-soft); }
+  .arch-box p { font-size: .78rem; color: var(--ink-soft); margin-top: 6px; line-height: 1.4; }
+  .arch-arrow { display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-size: .78rem; font-family: var(--mono); }
+  .arch-arrow-v { height: 30px; width: 2px; background: var(--line); margin: 6px auto; position: relative; }
+  .arch-arrow-v::after {
+    content: ""; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--line);
+  }
+  .arch-ledger {
+    margin-top: 10px; border: 1px dashed var(--ink-soft); border-radius: 3px; padding: 8px 16px;
+    font-family: var(--mono); font-size: .74rem; color: var(--ink-soft);
+  }
+
+  canvas.well { display: block; width: 100%; height: auto; }
+
+  .lean-block {
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 3px;
+    padding: 16px 18px; font-family: var(--mono); font-size: .78rem; line-height: 1.7;
+    color: var(--ink-soft); box-shadow: var(--shadow); overflow-x: auto;
+  }
+  .lean-block .kw { color: var(--blue); }
+  .lean-block .sorry { color: var(--orange); font-weight: 600; }
+
+  .nav-ui {
+    position: fixed; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 14px;
+    z-index: 20; font-family: var(--mono); font-size: .75rem; color: var(--ink-soft);
+  }
+  .nav-dots { display: flex; gap: 6px; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line); cursor: pointer; border: none; padding: 0; }
+  .nav-dot.active { background: var(--blue); width: 16px; border-radius: 3px; }
+  .nav-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper-raised);
+    color: var(--ink); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .9rem;
+  }
+  .nav-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .nav-btn:focus-visible, .nav-dot:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  .slide-index {
+    position: fixed; left: 22px; bottom: 22px; font-family: var(--mono); font-size: .72rem;
+    color: var(--ink-soft); z-index: 20; letter-spacing: .04em;
+  }
+
+  .ruler-wrap { margin-top: 10px; }
+  .ruler-legend { display: flex; gap: 22px; margin-top: 10px; flex-wrap: wrap; font-size: .78rem; color: var(--ink-soft); }
+  .ruler-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+
+  .col-head { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 10px; }
+  .col-head.fixed { color: var(--green); }
+  .col-head.open { color: var(--orange); }
+
+  @media print {
+    .nav-ui, .slide-index { display: none; }
+    .deck { height: auto; overflow: visible; }
+    .slide { min-height: auto; page-break-after: always; opacity: 1; transform: none; }
+  }
+</style>
+
+<div class="deck" id="deck">
+
+  <section class="slide" data-title="Title">
+    <div class="slide-inner">
+      <div class="eyebrow">ICFO · Quantum Nano-Optoelectronics: personal project presentation</div>
+      <h1 class="display">An agentic loop for<br />stochastic rare-event discovery</h1>
+      <p class="lead">Benchmarking a three-agent MSM pipeline against exact Kramers physics, with moiré stacking-domain switching as the motivating, not yet modeled, target application.</p>
+      <p class="kicker mono">Inés Alonso · moiré-msm-engine</p>
+      <p class="kicker mono" style="margin-top:4px"><a href="https://github.com/inesalonsoo/multiagent_for2Dphysics" style="color:inherit">github.com/inesalonsoo/multiagent_for2Dphysics</a></p>
+    </div>
+    <canvas class="well" id="well-title" height="160" aria-hidden="true" style="max-width:520px;margin-top:8px;opacity:.8"></canvas>
+  </section>
+
+  <section class="slide" data-title="The question">
+    <div class="slide-inner">
+      <div class="eyebrow">Motivation</div>
+      <h2 class="display">Can a multi-agent LLM system be trusted to discover an analysis pipeline when every claim it makes is checked against a known, closed-form answer?</h2>
+      <p class="lead">A narrow question, where every result below is checked against an exact physical answer, not against another model or a fit.</p>
+      <div class="callout caution" style="margin-top:28px;max-width:660px">
+        <span class="tag">Where moiré materials fit: motivation, not derivation</span>
+        Real twisted-bilayer-graphene stacking domains sit on a 2-component displacement field with three-fold (AA/AB/BA) symmetry, and relax as an elastic soliton network, not a scalar double well, not single-particle thermal hopping. Nothing here derives from moiré elasticity; the tilt <span class="mono">b</span> is a toy symmetry-breaking stand-in. Moiré motivates <em>why</em> verified switching-rate discovery matters, it is not what Phase 4 models.
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="The benchmark system">
+    <div class="slide-inner">
+      <div class="eyebrow">The system</div>
+      <h2 class="display" style="font-size:1.7rem">The 0-D stochastic double well</h2>
+      <div class="grid-2" style="margin-top:22px;align-items:center">
+        <div class="stack">
+          <p class="mono" style="font-size:1.05rem">dx = −V′(x) dt + √(2/β) dW</p>
+          <p class="mono" style="font-size:1.05rem">V(x) = A(x² − 1)² + b·x</p>
+          <p class="lead" style="margin-top:2px">Two minima, one barrier, one tilt parameter. Chosen deliberately: it's one of the few stochastic systems where <strong>both</strong> sides of the check are closed-form — the Eyring–Kramers rate's exponent exact and its prefactor asymptotically exact (β→∞), matching to ~15-20% at the β this project uses, <strong>and</strong> the Boltzmann population ratio exact by symmetry. No fitting required on either side.</p>
+          <div class="callout blue-tag" style="margin-top:6px">
+            <span class="tag">Why 0-D, not the 2D field directly</span>
+            The Eyring–Kramers prefactor has no known closed form in 2D (Rolland, Bouchet &amp; Simonnet, arXiv:1507.05577, §3.2.1). 0-D is the reference case every extended-field result in that literature is checked against. This project does the same.
+          </div>
+        </div>
+        <canvas class="well" id="well-main" height="320"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Phase 1">
+    <div class="slide-inner">
+      <div class="eyebrow">Phase 1: the verified engine</div>
+      <h2 class="display" style="font-size:1.7rem">The physics is real</h2>
+      <div class="grid-2" style="margin-top:18px;gap:34px">
+        <div class="fig">
+          <img src="data:image/png;base64,%%ARRHENIUS_B64%%" alt="Arrhenius plot: MSM-extracted relaxation rate vs. inverse temperature beta against the Eyring-Kramers analytical prediction, with a residual panel below showing percent deviation from the analytical rate" />
+          <div class="fig-cap">Two-panel figure: log-rate (top) vs. the analytical line; % deviation from analytical (bottom, linear). This was added specifically so Phase 2's error budget is visible, not just claimed.</div>
+        </div>
+        <div class="stack">
+          <div class="card"><h3>Gate 1: two macrostates</h3><p>Exactly 2 recovered by PCCA+ at every β, 6/6 replicas. Clean.</p></div>
+          <div class="card"><h3>Gate 2: Arrhenius slope</h3><p>Measured <span class="mono">−0.981</span> vs. exact <span class="mono">−1</span> (1.87% deviation, β ≤ 7) — gated on a 10% relative tolerance, not statistical significance: Eyring–Kramers is a β→∞ asymptotic formula, so a real O(1/β) correction exists at any finite β and doesn't shrink with more data.</p></div>
+          <div class="card"><h3>Two real bugs found en route</h3><p>Sparse-transition-count bias at high β, and a lag time (fixed at 20 frames) that wasn't actually converged. This was found by scanning the implied-timescale plateau, not assumed.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Phase 2">
+    <div class="slide-inner">
+      <div class="eyebrow">Phase 2: uncertainty quantification</div>
+      <h2 class="display" style="font-size:1.7rem">The uncertainty is honest</h2>
+      <p class="lead">A bare Bayesian credible interval failed at 4 of 5 test points on the first attempt. This isn't a bug: statistical CIs say nothing about the systematic bias Phase 1 had already measured. Fix: report both, combine in quadrature, gate on the total.</p>
+      <div class="ruler-wrap">
+        <div class="col-head">Zooming into β = 5 (reference point) — the full sweep's residuals are the bottom panel of the previous slide's plot</div>
+        <svg id="ruler" viewBox="0 0 900 90" width="100%" height="90" role="img" aria-label="Error budget ruler showing statistical, systematic, and total bands around the measured rate, with the analytical rate marked"></svg>
+        <div class="ruler-legend">
+          <span><i class="swatch" style="background:var(--blue);opacity:.28"></i>total band ±3.16% (statistical ⊕ systematic)</span>
+          <span><i class="swatch" style="background:var(--blue)"></i>statistical only ±1.08%</span>
+          <span><i class="swatch" style="background:var(--red)"></i>analytical rate (predicted)</span>
+        </div>
+      </div>
+      <p class="kicker" style="margin-top:16px">Full sweep, total band width at β = 3…7: <span class="mono">7.12% · 6.23% · 3.16% · 3.22% · 3.66%</span> — gate passed at every point.</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Phase 3 architecture">
+    <div class="slide-inner">
+      <div class="eyebrow">Phase 3: the agentic loop</div>
+      <h2 class="display" style="font-size:1.7rem">Orchestrator · Optimizer · Validator</h2>
+      <p class="lead">Mirrors the Prover/Verifier separation of Axiomatic AI's Ax-Prover (arXiv:2510.12787, Koppens et al.) — an independent, grounded verifier that the proposer cannot talk its way past.</p>
+      <div class="arch">
+        <div class="arch-box orchestrator"><h4>Orchestrator</h4><div class="role">no LLM, no physics</div><p>Task assignment, feedback routing, owns the stop decision. A pure function of the verdict and iteration count.</p></div>
+        <div class="arch-arrow-v"></div>
+        <div class="arch-row">
+          <div class="arch-box"><h4>Optimizer</h4><div class="role">≙ Prover</div><p>Proposes (n_clusters, lag). Disciplined by a deterministic tool call — never predicts its own score.</p></div>
+          <div class="arch-box"><h4>Validator</h4><div class="role">≙ Verifier</div><p>Computes hard physics checks in Python <em>before</em> the LLM sees them. Verdict is schema-enforced, not the LLM's opinion.</p></div>
+        </div>
+        <div class="arch-ledger">every iteration → one JSON ledger entry (config, result, verdict, reasoning)</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Phase 3 result">
+    <div class="slide-inner">
+      <div class="eyebrow">Phase 3: real result</div>
+      <h2 class="display" style="font-size:1.7rem">The agents search; the verifier constrains</h2>
+      <div class="grid-2" style="margin-top:14px;gap:34px;align-items:start">
+        <div class="fig">
+          <img src="data:image/png;base64,%%PHASE3_B64%%" alt="Accepted relaxation rate per converged run, all inside the Phase 2 total error band, against the analytical rate" />
+          <div class="fig-cap">4 real runs, <span class="mono">anthropic:claude-sonnet-5</span>, β = 5.0.</div>
+        </div>
+        <table class="data">
+          <thead><tr><th>Run</th><th>Iters</th><th>Accepted config</th><th>Rate</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="num">6</td><td class="mono">n=60, lag=20</td><td class="num">0.011853</td></tr>
+            <tr><td>2</td><td class="num">4</td><td class="mono">n=50, lag=50</td><td class="num">0.011797</td></tr>
+            <tr><td>3</td><td class="num">5</td><td class="mono">n=75, lag=20</td><td class="num">0.011774</td></tr>
+            <tr><td>4</td><td class="num">5</td><td class="mono">n=100, lag=10</td><td class="num">0.011764</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid-2" style="margin-top:20px;gap:34px">
+        <div class="callout good"><span class="tag">v1 → v2, honestly</span>v1 (8 runs): every run proposed the byte-identical config — the prompt handed the Optimizer the solved lag. Redesigned to hand over only the search space. v2: 20/20 rejections, 100% attributable to a real physics gate, 0% ill-posed.</div>
+        <div class="callout caution"><span class="tag">One-sided in these 4 runs: checked directly</span>All 4 accepted and all 20 rejected configs sat below the analytical rate. Checked directly against the real pipeline (no LLM): a too-short lag overestimates the rate by up to 82%, and the same Validator function correctly rejects it. Gate confirmed symmetric — but no real <em>agentic</em> run has produced an overestimate yet, only this direct check.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Lean oracle">
+    <div class="slide-inner">
+      <div class="eyebrow">Phase 3.5: formal verification</div>
+      <h2 class="display" style="font-size:1.7rem">The known answers, formally stated</h2>
+      <p class="lead">Every physics check in Phase 3 leans on <span class="mono">known_answers.py</span>'s hardcoded constants — curvature, critical points, barrier height — derived once by hand in a docstring and never independently checked since. Phase 3.5 asks the narrower question that gap leaves open: can those derivations themselves be formally verified, not just trusted? Ax-Prover's actual tool is Lean, not just a structural analogy anymore, so we test it directly on this project's own oracle. The constants are now formally <em>stated</em> in Lean 4 + Mathlib as corollaries of two foundational derivative theorems, so a wrong differentiation can't hide behind a correct-looking substitution.</p>
+      <div class="lean-block" style="margin-top:16px">
+        <span class="kw">theorem</span> curvature_at_saddle (A : ℝ) :<br />
+        &nbsp;&nbsp;deriv (V' A 0) 0 = -4 * A := <span class="sorry">by sorry</span>
+      </div>
+      <p class="kicker" style="margin-top:14px">7 theorem statements written; 6 still end in <span class="mono">sorry</span>, 1 (the b=0 symmetry, pure algebra) is fully proved. Scope, drawn deliberately: <strong>Claude Code writes statements — <span class="sorry" style="font-weight:600">ax-prover writes proofs</span>.</strong> Out of scope by design: the Eyring–Kramers rate itself (Fokker–Planck asymptotics, not algebra), any MSM convergence claim, and exact tilted-well positions (irrational roots — <span class="mono">brentq</span> is the honest answer there).</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="What I decided">
+    <div class="slide-inner">
+      <div class="eyebrow">Authorship</div>
+      <h2 class="display" style="font-size:1.7rem">What I decided vs. what Claude Code executed</h2>
+      <div class="grid-2" style="margin-top:18px;gap:30px">
+        <div class="stack">
+          <div class="col-head" style="color:var(--blue)">Directed by me</div>
+          <div class="card"><p>Diagnosed the symmetric-well dead end (Δf = 0 → curvature-limited switching) before any redesign was proposed.</p></div>
+          <div class="card"><p>Rejected "tighten the tolerance until a config fails" twice — once for the convergence study, again for the one-sided-gate question — and specified "test it directly against real data" instead both times.</p></div>
+          <div class="card"><p>Drew the Lean scope boundary myself: statements only, no proofs, no rate formula, no MSM-convergence "theorems" — a category error I ruled out before any Lean code was written.</p></div>
+          <div class="card"><p>Set every protected physics parameter (β, A, b, L) and chose the agent model, weighing cost against reasoning quality.</p></div>
+        </div>
+        <div class="stack">
+          <div class="col-head">Executed by Claude Code</div>
+          <div class="card"><p>Implementation of every module, docstrings, and the test suite (103 passed, 2 skipped).</p></div>
+          <div class="card"><p>The session-by-session log in <span class="mono">PROJECT_STATE.md</span>.</p></div>
+          <div class="card"><p>Diagnosing <em>why</em> a gate failed once told which gate failed and given the freedom to investigate.</p></div>
+          <div class="card"><p>Drafting the agent prompts, schema contracts, and Lean theorem statements, to the design constraints.</p></div>
+        </div>
+      </div>
+      <p class="kicker" style="margin-top:18px">CLAUDE.md's "nothing is a black box" rule is itself my decision: every function must be explainable out loud.</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="What I learned">
+    <div class="slide-inner">
+      <div class="eyebrow">Reflection</div>
+      <h2 class="display" style="font-size:1.7rem">What this project actually taught me</h2>
+      <div class="stack" style="margin-top:18px;gap:14px">
+        <div class="card">
+          <h3>1 · Built the physics from scratch, not just the formula I needed</h3>
+          <ul>
+            <li>No prior background in stochastic thermodynamics: worked up Kramers escape theory, the Eyring–Kramers prefactor, detailed balance, and why a rate and an equilibrium ratio are different kinds of "exact."</li>
+            <li>Read Rolland, Bouchet &amp; Simonnet (arXiv:1507.05577) in full.</li>
+            <li>That helped me diagnosing ΔF = 0 in the symmetric well as a structural dead end (curvature-limited switching) not a tuning problem.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>2 · Went from reading about scientific tooling to guiding it</h3>
+          <ul>
+            <li>deeptime's MSM / TICA / Bayesian-UQ machinery: from documentation to deployment. Some previous experience from my PHPB&amp;QOT ICFO project.</li>
+            <li>Designed schema-enforced agent contracts (pydantic-ai) instead of trusting free-text LLM output.</li>
+            <li>Specific lesson: a statistical confidence interval is not an error budget. Systematic bias has to be measured and added in quadrature, not assumed away.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>3 · "Tighten the tolerance until something fails" proves nothing</h3>
+          <ul>
+            <li>Rejected this twice: the convergence-study redesign, and the one-sided-gate question.</li>
+            <li>Manufacturing a rejection against a known-right answer is not the same as finding a real one.</li>
+            <li>Both times the better move was the harder one: test the missing case directly against real data.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>4 · An MSM lag time must be verified, not assumed; and no LLM shortcut replaces that</h3>
+          <ul>
+            <li>Phase 1's fixed lag = 20 was under-converged at high β.</li>
+            <li>Caught only by manually scanning the implied-timescale plateau.</li>
+            <li>AI tooling accelerated everything around this step. It did not replace verifying it by hand.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>5 · Handing an optimizer the answer is not a demonstration of search</h3>
+          <ul>
+            <li>v1's prompt leaked the converged lag to the Optimizer as "a well-motivated starting region."</li>
+            <li>All 8 runs then proposed it verbatim on iteration 1, so the Validator's gate was never tested against a wrong config.</li>
+            <li>The flaw was in the demonstration, not the architecture. Removing the leak let a real search, and a real rejection, happen.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Known limitations">
+    <div class="slide-inner">
+      <div class="eyebrow">Self-critique</div>
+      <h2 class="display" style="font-size:1.7rem">What I'd push back on myself</h2>
+      <div class="col-head fixed" style="margin-top:6px">Fixed since the last internal review</div>
+      <div class="grid-2" style="margin-top:8px;gap:16px">
+        <div class="callout good"><span class="tag">Moiré scope</span>README now states the gap explicitly ("Where moiré materials fit") instead of implying a physical correspondence that doesn't exist.</div>
+        <div class="callout good"><span class="tag">Invisible error bars</span>Phase 1's plot gained a linear residual panel — Phase 2's whole contribution is now visible, not just claimed.</div>
+      </div>
+      <div class="col-head open" style="margin-top:22px">Still open</div>
+      <div class="grid-2" style="margin-top:8px;gap:16px">
+        <div class="callout caution"><span class="tag">One-sided, in real runs</span>Confirmed symmetric by a direct pipeline check — but no real <em>agentic</em> run has yet produced an accepted or rejected overestimate.</div>
+        <div class="callout caution"><span class="tag">N = 4</span>The convergence study shows the mechanism works, not a failure rate. Tail behavior is untested.</div>
+        <div class="callout caution"><span class="tag">Unverified conversion</span>Phase 4's L_theirs = 2·L_ours is analytically self-consistent but not yet checked against a simulated front width.</div>
+        <div class="callout caution"><span class="tag">Lean proofs: attempted, blocked on budget</span>1/7 proven (dry run). <span class="mono">V_hasDerivAt</span> failed 11 real attempts, then the run hit an API credit wall — a personal-funds limit on this undergraduate project, not a technical dead end. Resumes when funded.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Next steps">
+    <div class="slide-inner">
+      <div class="eyebrow">What's live: human's call</div>
+      <h2 class="display" style="font-size:1.7rem">Two open forward paths</h2>
+      <div class="stack" style="margin-top:10px">
+        <div class="card"><h3>A · Phase 4 — the 2D deployment</h3><p>Wire the dormant Boltzmann check into <span class="mono">ValidatorDecision</span> (well-identity tracking already built) · numerically validate the L_theirs = 2·L_ours conversion against a simulated front width · run at the corrected L ≈ 2.5, β ≈ 20–30, b = 0.1 · validate qualitatively against the Phase 1 reference — no 2D analytical rate exists in the literature to stake correctness on.</p></div>
+        <div class="card"><h3>B · Module 3.9 — resume discharging the Lean proofs</h3><p>Already attempted for real: 1/7 theorems proven, <span class="mono">V_hasDerivAt</span> failed 11 real iterations, then the run hit an API credit wall — a personal-funds constraint on an undergraduate project, not a technical blocker. Resume <span class="mono">ax-prover prove</span> on the remaining 6 theorems once funded; archive the output as <span class="mono">results/lean_oracle_prove_output.json</span>, which unlocks the 2 currently-skipped Group B consistency tests.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Close">
+    <div class="slide-inner">
+      <div class="eyebrow">Close</div>
+      <h2 class="display" style="font-size:1.7rem">Questions</h2>
+      <p class="lead" style="margin-top:8px">103 tests passed, 2 skipped (Lean Group B, pending a real prover run) · zero real API calls in the test suite · every session logged in <span class="mono">PROJECT_STATE.md</span>.</p>
+      <div class="stack" style="margin-top:24px">
+        <p class="kicker">Rolland, Bouchet &amp; Simonnet — <em>Computing transition rates for the 1-D stochastic Ginzburg–Landau–Allen-Cahn equation</em>, arXiv:1507.05577</p>
+        <p class="kicker">Axiomatic AI (Breen, Koppens et al.) — <em>Ax-Prover: A Deep Reasoning Agentic Framework for Theorem Proving</em>, arXiv:2510.12787 — the architecture Phase 3 mirrors</p>
+        <p class="kicker">Requena, Letson, Nowakowski, Beltran-Ferreiro &amp; Sarra — <em>A Minimal Agent for Automated Theorem Proving</em>, arXiv:2602.24273 — the actual <span class="mono">ax-prover</span> tool run in Module 3.9</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="slide-index mono" id="slide-index">01 / 12</div>
+<div class="nav-ui">
+  <button class="nav-btn" id="prev" aria-label="Previous slide">&#8593;</button>
+  <div class="nav-dots" id="dots"></div>
+  <button class="nav-btn" id="next" aria-label="Next slide">&#8595;</button>
+</div>
+
+<script>
+(function () {
+  var deck = document.getElementById('deck');
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var dotsWrap = document.getElementById('dots');
+  var indexLabel = document.getElementById('slide-index');
+  var total = slides.length;
+
+  slides.forEach(function (s, i) {
+    var d = document.createElement('button');
+    d.className = 'nav-dot';
+    d.setAttribute('aria-label', 'Go to slide ' + (i + 1) + ': ' + (s.dataset.title || ''));
+    d.addEventListener('click', function () { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    dotsWrap.appendChild(d);
+  });
+  var dots = Array.prototype.slice.call(dotsWrap.children);
+
+  var currentIndex = 0;
+  function setActive(i) {
+    currentIndex = i;
+    dots.forEach(function (d, j) { d.classList.toggle('active', j === i); });
+    indexLabel.textContent = String(i + 1).padStart(2, '0') + ' / ' + total;
+  }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      var i = slides.indexOf(entry.target);
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        if (entry.intersectionRatio > 0.55) setActive(i);
+      }
+    });
+  }, { threshold: [0, 0.55, 1] });
+  slides.forEach(function (s) { io.observe(s); });
+
+  document.getElementById('prev').addEventListener('click', function () {
+    slides[Math.max(0, currentIndex - 1)].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('next').addEventListener('click', function () {
+    slides[Math.min(total - 1, currentIndex + 1)].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  window.addEventListener('keydown', function (e) {
+    if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].indexOf(e.key) !== -1) {
+      e.preventDefault();
+      slides[Math.min(total - 1, currentIndex + 1)].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].indexOf(e.key) !== -1) {
+      e.preventDefault();
+      slides[Math.max(0, currentIndex - 1)].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  // --- Double-well potential, drawn from the real function y = A(x^2-1)^2 + b*x ---
+  function drawWell(canvasId, opts) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    var dpr = window.devicePixelRatio || 1;
+    var cssWidth = canvas.clientWidth || canvas.parentElement.clientWidth || 480;
+    var cssHeight = parseFloat(canvas.getAttribute('height')) || 240;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.height = cssHeight + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    var A = 1.0, b = opts.tilt || 0.0;
+    var xMin = -1.7, xMax = 1.7;
+    var n = 240;
+    var pts = [];
+    var yMax = 0;
+    for (var i = 0; i <= n; i++) {
+      var x = xMin + (xMax - xMin) * i / n;
+      var y = A * Math.pow(x * x - 1, 2) + b * x;
+      pts.push([x, y]);
+      if (y > yMax) yMax = y;
+    }
+    var padL = 26, padR = 18, padT = 22, padB = 26;
+    var w = cssWidth - padL - padR, h = cssHeight - padT - padB;
+    function sx(x) { return padL + (x - xMin) / (xMax - xMin) * w; }
+    function sy(y) { return padT + h - (y / (yMax * 1.08)) * h; }
+
+    var styles = getComputedStyle(document.documentElement);
+    var blue = styles.getPropertyValue('--blue').trim() || '#235a92';
+    var red = styles.getPropertyValue('--red').trim() || '#a3302f';
+    var line = styles.getPropertyValue('--line').trim() || '#ccc';
+    var inkSoft = styles.getPropertyValue('--ink-soft').trim() || '#666';
+
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    // baseline
+    ctx.strokeStyle = line; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, sy(0)); ctx.lineTo(cssWidth - padR, sy(0)); ctx.stroke();
+
+    // curve
+    ctx.beginPath();
+    pts.forEach(function (p, i) {
+      var X = sx(p[0]), Y = sy(p[1]);
+      if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    });
+    ctx.strokeStyle = blue; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.stroke();
+
+    if (opts.labels) {
+      ctx.fillStyle = inkSoft;
+      ctx.font = '11px ' + (styles.getPropertyValue('--mono') || 'monospace');
+      ctx.textAlign = 'center';
+      ctx.fillText('barrier ΔV = A', sx(0), sy(yMax) - 10);
+      ctx.fillText('x₋', sx(-1 - (b > 0 ? 0.06 : -0.06)), sy(0) + 16);
+      ctx.fillText('x₊', sx(1 - (b > 0 ? 0.06 : -0.06)), sy(0) + 16);
+
+      // dashed marker at barrier top
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = red;
+      ctx.beginPath(); ctx.moveTo(sx(0), sy(yMax)); ctx.lineTo(sx(0), sy(0)); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  drawWell('well-title', { tilt: 0.12, labels: false });
+  drawWell('well-main', { tilt: 0.12, labels: true });
+  window.addEventListener('resize', function () {
+    drawWell('well-title', { tilt: 0.12, labels: false });
+    drawWell('well-main', { tilt: 0.12, labels: true });
+  });
+
+  // --- Error-budget ruler (Phase 2, beta = 5) ---
+  (function drawRuler() {
+    var svg = document.getElementById('ruler');
+    if (!svg) return;
+    var mean = 0.011782, statRel = 0.0108, sysRel = 0.0297, totalRel = 0.0316, analytical = 0.012133;
+    var domainMin = 0.0113, domainMax = 0.0124;
+    var x0 = 30, x1 = 870, yMid = 46;
+    function X(v) { return x0 + (v - domainMin) / (domainMax - domainMin) * (x1 - x0); }
+
+    var styles = getComputedStyle(document.documentElement);
+    var blue = styles.getPropertyValue('--blue').trim();
+    var red = styles.getPropertyValue('--red').trim();
+    var inkSoft = styles.getPropertyValue('--ink-soft').trim();
+    var mono = 'ui-monospace, monospace';
+
+    var totalLo = mean * (1 - totalRel), totalHi = mean * (1 + totalRel);
+    var statLo = mean * (1 - statRel), statHi = mean * (1 + statRel);
+
+    var ns = 'http://www.w3.org/2000/svg';
+    function el(tag, attrs) {
+      var e = document.createElementNS(ns, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    svg.innerHTML = '';
+    svg.appendChild(el('line', { x1: x0, x2: x1, y1: yMid, y2: yMid, stroke: inkSoft, 'stroke-width': 1, opacity: .35 }));
+
+    // total band
+    svg.appendChild(el('rect', {
+      x: X(totalLo), y: yMid - 14, width: X(totalHi) - X(totalLo), height: 28,
+      fill: blue, opacity: .22, rx: 2
+    }));
+    // statistical band
+    svg.appendChild(el('rect', {
+      x: X(statLo), y: yMid - 7, width: X(statHi) - X(statLo), height: 14,
+      fill: blue, opacity: .75, rx: 2
+    }));
+    // mean marker
+    svg.appendChild(el('line', { x1: X(mean), x2: X(mean), y1: yMid - 20, y2: yMid + 20, stroke: blue, 'stroke-width': 2 }));
+    // analytical marker
+    svg.appendChild(el('line', { x1: X(analytical), x2: X(analytical), y1: yMid - 24, y2: yMid + 24, stroke: red, 'stroke-width': 2.4 }));
+    var atxt = el('text', { x: X(analytical), y: yMid - 30, 'text-anchor': 'middle', fill: red, 'font-family': mono, 'font-size': 11 });
+    atxt.textContent = 'analytical ' + analytical.toFixed(6);
+    svg.appendChild(atxt);
+    var mtxt = el('text', { x: X(mean), y: yMid + 38, 'text-anchor': 'middle', fill: inkSoft, 'font-family': mono, 'font-size': 11 });
+    mtxt.textContent = 'measured ' + mean.toFixed(6);
+    svg.appendChild(mtxt);
+  })();
+
+  setActive(0);
+})();
+</script>

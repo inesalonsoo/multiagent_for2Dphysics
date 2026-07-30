@@ -1,0 +1,7 @@
+{
+  "Oracle.Potential:potential_even_at_b0": {
+    "success": true,
+    "error": null,
+    "summary": "## Summary: potential_even_at_b0\n\n**Status**: \u2705 Successfully proven in 3 iterations\n\n**Theorem Location**: `Oracle.Potential:potential_even_at_b0`\n\n**Theorem Statement**: `V A 0 x = V A 0 (-x)` where `V A b x = A * (x^2 - 1)^2 + b * x`\n\n### Proof Strategy\n\nThe successful proof used direct rewriting instead of unfolding:\n```lean\nrw [V, V, neg_sq, zero_mul, zero_mul]\n```\n\nKey lemmas:\n- `neg_sq`: `(-x)^2 = x^2`\n- `zero_mul`: `0 * a = 0`\n\n### Path to Success\n\n| Iteration | Approach | Result |\n|-----------|----------|--------|\n| 1 | `unfold V` then `ring` | Timeout |\n| 2 | `unfold V` then `simp only [...]` | Timeout |\n| 3 | `rw [V, V, neg_sq, zero_mul, zero_mul]` | \u2705 Success |\n\n### Key Insight\n\nThe `unfold` tactic followed by simplification tactics caused build timeouts. Using `rw [V, V, ...]` to expand the definition directly in a single rewrite step avoided the computational overhead and completed efficiently."
+  }
+}

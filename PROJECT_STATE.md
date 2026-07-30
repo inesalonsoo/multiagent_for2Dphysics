@@ -1466,6 +1466,135 @@ Always open a reference and confirm it says what we assume before relying on it.
     only" decision. Module 3.9 (§7) is the follow-up task that actually
     runs those commands and archives the resulting JSON.
 
+- **[2026-07-30] Module 3.9 attempted for real — genuine partial progress,
+  blocked on API credits (a personal-funds constraint, not a technical
+  dead end). First real attempt at discharging the 7 Lean `sorry`s.**
+  - **Installed `ax-prover`** (PyPI, v0.1.1) into this project's `.venv` —
+    a new dependency, not on CLAUDE.md's original approved list, explicitly
+    authorized this session (the human pointed to the local `ax-prover-base`
+    clone at `C:\Users\Ines\dev\ax-prover-base` for provenance before
+    installing, not autonomously added).
+  - **Hit and worked around a real bug in the installed package itself, same
+    class as this project's own already-fixed cp1252 issue** (see the
+    2026-07-27 entry above): `ax-prover`'s own file-reading/logging code
+    calls `Path.read_text()`/console-write with no explicit encoding, which
+    defaults to Windows cp1252 and crashes on the `ℝ` character in
+    `Oracle/Potential.lean` and a combining-dot character in its own log
+    output. Not patchable (third-party installed package) — worked around
+    at the process level via `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8`
+    environment variables, which force UTF-8 mode globally.
+  - **Dry run first, per this project's own established discipline**:
+    proved the simplest theorem (`potential_even_at_b0`, pure algebra, no
+    derivative) in 3 iterations (~23 minutes wall time — two 180-second
+    Lean build timeouts before `rw [V, V, neg_sq, zero_mul, zero_mul]`
+    succeeded). Confirmed the whole pipeline (API key, encoding fix,
+    LeanSearch tool, JSON output) works end-to-end before spending more.
+  - **Full batch run** (`ax-prover prove Oracle.Potential --folder .
+    --skip-build`): `V_hasDerivAt` — one of the two foundational
+    `HasDerivAt` theorems every other corollary chains through — was
+    genuinely attempted 11 times, with 11 real Lean build failures (the
+    agent kept proposing chain-rule/`pow`-composition proofs that didn't
+    type-check against Mathlib). This is real evidence the theorem is
+    genuinely hard for the agent at default settings, not a proof found
+    and lost. The run then hit `anthropic.BadRequestError: Your credit
+    balance is too low` — the identical error class already logged in the
+    2026-07-12 session entry above, except this time it's a hard stop
+    rather than a same-day top-up. The process was killed rather than left
+    to keep re-hitting the same wall on the remaining theorems.
+  - **Resource constraint, stated plainly rather than glossed over**: this
+    project is funded from the human's own personal funds as an
+    undergraduate, not a lab or grant budget. Real LLM-driven theorem
+    proving is materially more expensive per theorem than Phase 3's
+    agentic loop (11 failed iterations spent on ONE theorem before hitting
+    the wall, vs. Phase 3's 4-6 iterations per full converged run) — this
+    is a genuine, not hypothetical, budget limit on how much of Module 3.9
+    can be attempted in one sitting.
+  - **Status: 1 of 7 theorems proven** (`potential_even_at_b0`, from the
+    dry run). **6 of 7 not yet** — `V_hasDerivAt` now has 11 real
+    documented failed attempts (useful signal for the next attempt: it
+    needs either more iterations, a different/cheaper model, or a
+    manually-seeded proof hint); `V'_hasDerivAt`, `critical_points_b0`,
+    `curvature_at_wells`, `curvature_at_saddle`, and `barrier_height_eq`
+    were never attempted at all because the run died before reaching them.
+    `results/lean_oracle_prove_output.json` does NOT exist — no batch
+    completed, so nothing to archive yet. Group B's 2 skipped tests
+    correctly remain skipped.
+  - **Deliberately not done**: reducing cost by lowering `max_iterations`
+    or switching to a cheaper prover model without the human's explicit
+    input — those are the human's calls to make when resuming, not
+    something to change unilaterally mid-run.
+  - **Also this session, presentation-deck work (no physics/pipeline code
+    touched)**: added a "What this project actually taught me" slide;
+    ran a full slide-by-slide fact-consistency check against the live repo
+    (every specific number — Phase 1/2/3 results, Lean theorem count,
+    live `pytest` count — verified accurate as of 2026-07-30); fixed a
+    stale README test count (was "100 tests, all passing," corrected to
+    "103 passed / 2 skipped"); **flagged, not yet resolved: the deck and
+    README cite Ax-Prover as arXiv:2510.12787 (Koppens et al.), but the
+    actually-installed `ax-prover` package (from `ax-prover-base`) cites a
+    different paper in its own README, arXiv:2602.24273 (Requena Pozo,
+    Letson, Nowakowski, Beltran Ferreiro, Sarra) — needs the human's
+    resolution (are these two different, related papers, or was the
+    original citation simply wrong?), not silently changed either way.**
+
+- **[2026-07-30] Ax-Prover citation resolved; presentation-deck fact-check
+  pass found one real overclaim, one now-stale claim (caused by this
+  session's own Lean work), and one likely-fabricated citation from an
+  earlier session — all fixed except the fabricated citation, which is
+  corrected HERE rather than silently rewritten in its original entry.**
+  - **Ax-Prover citation: both arXiv IDs are real, and the deck's
+    architecture citation was correct all along.** Fetched both papers'
+    abstracts directly. arXiv:2510.12787, "Ax-Prover: A Deep Reasoning
+    Agentic Framework for Theorem Proving in Mathematics and Quantum
+    Physics" (Breen, Del Tredici, McCarran, Aspuru Mijares, Yin, Sulimany,
+    Taylor, Koppens, Englund) — this IS the original multi-agent
+    Orchestrator/Prover/Verifier architecture paper this project mirrors;
+    the existing citation stands. arXiv:2602.24273, "A Minimal Agent for
+    Automated Theorem Proving" (Requena, Letson, Nowakowski,
+    Beltran-Ferreiro, Sarra) — a DIFFERENT, later, simpler open-source
+    reimplementation: this is the actual `pip install ax-prover` /
+    `ax-prover-base` tool used to attempt Module 3.9 above. Same
+    "ax-prover" package name (shared lab, `@axiomatic-ai.com` emails), not
+    the same paper or authors as the architecture citation. The deck now
+    cites both, distinguishing "architecture we mirror" from "tool we ran."
+  - **Fact-check pass (general-purpose agent, cross-checked by hand against
+    `physics/known_answers.py` and `lean/Oracle/Potential.lean` directly,
+    not trusted at face value) found two real issues, fixed in the deck:**
+    1. **The benchmark/Phase-1 slides overclaimed the Eyring-Kramers rate
+       as "exact and closed-form" (prefactor included).** This directly
+       contradicts `known_answers.py`'s own docstring, which says plainly
+       the formula is "exact only as beta -> infinity," the prefactor
+       matches to only ~15-20% at finite beta, and only the EXPONENT
+       (slope) is unconditionally exact. Fixed throughout the deck
+       (benchmark-system callout, Arrhenius alt text, Gate 2 card, ruler
+       legend) to state the real, more precise claim: exponent exact,
+       prefactor asymptotically exact.
+    2. **The Lean oracle slide's "every one [of 7] ends in sorry" went
+       stale from this session's OWN dry run** — `potential_even_at_b0`
+       now has a real, complete proof (`rw [V, V, neg_sq, zero_mul,
+       zero_mul]`) in the actual `lean/Oracle/Potential.lean` file, not a
+       placeholder. Fixed to "6 still end in sorry, 1 fully proved."
+  - **A third finding is a correction to THIS FILE's own historical
+    record, not just the deck — flagged rather than silently rewritten.**
+    The 2026-07-12 Phase 1 entry above (and the deck, now fixed) attributed
+    the 10% relative-tolerance gate to "Rolland-Bouchet's own reported
+    '1±0.1' agreement... §4.2." **Fetched the paper's full text directly
+    and searched §4: no such percentage-agreement figure exists anywhere
+    in it** — only qualitative statements ("qualitatively comparable,"
+    "significative differences"). This citation appears to have been
+    confabulated in an earlier session and never checked against the
+    actual paper text before being written down and repeated. The 10%
+    tolerance choice itself is NOT in question — it is independently
+    justified by this project's own correct physics reasoning (Eyring-
+    Kramers is a beta->infinity asymptotic formula, so a real O(1/beta)
+    correction exists at any finite beta and does not shrink with more
+    data, making a relative-tolerance gate the right choice regardless of
+    what any other paper reports) — only the specific external attribution
+    was wrong. The 2026-07-12 entry is left as originally written (the
+    project's convention: never edit a past dated entry) with this entry
+    serving as the correction of record. Deck fixed to state the real
+    justification without the unverifiable citation.
+
 ## 10. Current status
 
 - **Phase:** **1 & 2 COMPLETE. Phase 3 CODE-COMPLETE (3.1-3.7) AND its
@@ -1531,11 +1660,15 @@ Always open a reference and confirm it says what we assume before relying on it.
   (the 2 skips are the new Lean-oracle Group B tests, gated on ax-prover
   actually having run — see the 2026-07-27 §9 entry).
 - **➡️ NEXT TASK:** two independent tracks, either can go first:
-  1. **Module 3.9 (Phase 3.5 side track):** run `cd lean && lake exe cache
-     get && lake build && ax-prover prove Oracle.Potential --folder . -o
-     ../results/lean_oracle_prove_output.json` to discharge the 7 `sorry`s
-     in `lean/Oracle/Potential.lean`, which flips `tests/test_lean_oracle_
-     consistency.py`'s 2 skipped tests to passing.
+  1. **Module 3.9 (Phase 3.5 side track) — IN PROGRESS, BLOCKED ON API
+     CREDITS (see the 2026-07-30 §9 entry).** 1/7 theorems proven
+     (`potential_even_at_b0`); `V_hasDerivAt` has 11 real documented failed
+     attempts; 4 theorems never attempted. Resume with `cd lean && lake exe
+     cache get && lake build && ax-prover prove Oracle.Potential --folder .
+     -o ../results/lean_oracle_prove_output.json` once more credits are
+     available — this is a personal-funds constraint (undergraduate
+     project), not a technical blocker. Completing it flips `tests/test_
+     lean_oracle_consistency.py`'s 2 skipped tests to passing.
   2. **Phase 4 (2D deployment, corrected L=2.5)**, per the human's earlier
      explicit ordering. Its own first task is NOT a tilted-potential run —
      `physics/simulate.py` (the 2D field) and its tilt support already
@@ -2046,3 +2179,21 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   - **Next:** unchanged from Session 11 — Phase 4 (2D deployment) or
     Module 3.9 (running `ax-prover prove` on the Lean scaffold), human's
     call.
+- **[2026-07-30] Session 13 (Module 3.9 attempt + presentation deck):**
+  Installed `ax-prover` (human-directed, pointed to the local
+  `ax-prover-base` clone for provenance); hit and worked around a real
+  cp1252-encoding bug in the installed package itself (same bug class
+  this project already fixed once in its own code — see 2026-07-27).
+  Dry run proved 1/7 theorems (`potential_even_at_b0`, 3 iterations, ~23
+  min). Full run: `V_hasDerivAt` failed 11 real attempts, then hit the
+  same "credit balance too low" error as the 2026-07-12 session — killed
+  the process rather than let it keep re-hitting the wall. Genuine
+  constraint: this is a personally-funded undergraduate project, not a
+  grant budget. Module 3.9 is now OPEN with real partial evidence, not
+  "not yet attempted." Also added a "What I learned" slide to the deck,
+  did a full fact-consistency check (all verified accurate), fixed a
+  stale README test count, and flagged (unresolved) a citation
+  discrepancy: the deck cites Ax-Prover as arXiv:2510.12787 (Koppens et
+  al.), but the installed `ax-prover` package cites arXiv:2602.24273
+  (Requena Pozo et al.) instead. **Next:** resume Module 3.9 when funded,
+  or proceed with Phase 4; resolve the Ax-Prover citation discrepancy.

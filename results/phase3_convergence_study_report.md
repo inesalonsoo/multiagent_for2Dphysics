@@ -8,7 +8,7 @@ trajectory (seed=7) reused across all 4 repetitions
 reused via `agents.validator.load_rate_tolerance()`, unchanged from v1)
 **Raw data:** `results/phase3_convergence_study/run_01..04_ledger.json`,
 `results/phase3_convergence_study.png`
-**Superseded run:** `results/phase3_convergence_study_v1_prompt_anchored/` —
+**Superseded run:** `archive/results/phase3_convergence_study_v1_prompt_anchored/` —
 the original 8-run study, archived, not deleted; see its own report for the
 negative finding that motivated this redesign.
 

@@ -1,6 +1,6 @@
 # Moiré-MSM-Engine
 
-**An autonomous multi-agent system that discovers Markov State Model pipelines for stochastic dynamics, verifies every result against exact analytical physics, and quantifies its own uncertainty. Built as a path toward characterizing switching dynamics in moiré (twisted-bilayer) materials.**
+**An autonomous multi-agent system that discovers Markov State Model pipelines for stochastic dynamics, verifies every result against exact analytical physics, and quantifies its own uncertainty. Demonstrated on a textbook double-well benchmark, motivated by — but not a physical model of — switching dynamics in moiré (twisted-bilayer) materials (see "Where moiré materials fit" below).**
 
 ## Overview
 
@@ -70,6 +70,7 @@ agents/        the three-agent loop: schemas, deterministic tool, Optimizer, Val
 scripts/       phase entry points (run_phase1_benchmark.py, run_phase2_uq.py, run_phase3_agentic.py, ...)
 tests/         known-answer tests, one file per module, 100 tests, all passing
 results/       generated plots, raw sweep data, agent ledgers
+archive/       superseded artifacts (pre-pivot dead ends, an old study run) — not part of the current pipeline, kept for the record
 CLAUDE.md          project constitution: engineering discipline and hard boundaries
 PROJECT_STATE.md   full session-by-session working log — every decision, bug, and finding
 ```

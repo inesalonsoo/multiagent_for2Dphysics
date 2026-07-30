@@ -1211,7 +1211,9 @@ Always open a reference and confirm it says what we assume before relying on it.
   converged, paths genuinely diverge, 20 real physics rejections across
   all 4 runs, 4 different accepted configs, all inside the UQ band.
   Full write-up: `results/phase3_convergence_study_report.md` (v1
-  archived at `results/phase3_convergence_study_v1_prompt_anchored/`).**
+  archived at `archive/results/phase3_convergence_study_v1_prompt_anchored/`,
+  moved there from `results/` during the 2026-07-30 repo cleanup pass, see
+  the dated entry at the end of this section).**
   - **The fix: stop handing the Optimizer the answer, hand it the search
     space.** `agents/optimizer.py`'s `SearchBounds` no longer has a
     `known_converged_lagtime` field or any "well-motivated starting
@@ -1481,8 +1483,8 @@ Always open a reference and confirm it says what we assume before relying on it.
   inside the Phase 2 UQ band — the full two-sided claim, demonstrated.**
   Full write-up: `results/phase3_convergence_study_report.md` (v1's
   honest negative finding archived at
-  `results/phase3_convergence_study_v1_prompt_anchored/`). Phase 4 (2D
-  deployment, corrected L=2.5) not yet attempted.
+  `archive/results/phase3_convergence_study_v1_prompt_anchored/`). Phase 4
+  (2D deployment, corrected L=2.5) not yet attempted.
 - **Last completed:** redesigned and re-ran the convergence-robustness
   study. v1 (8 runs) found 0/8 path diversity, root-caused to the
   Optimizer's prompt handing it the converged `msm_lagtime` directly.
@@ -1986,3 +1988,61 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   - **Next:** Phase 4 (2D deployment, corrected L=2.5) — its own first
     task is wiring the Boltzmann check into `ValidatorDecision`, not a
     tilted-potential run.
+- **[2026-07-30] Session 12 (repo cleanup for presentation, no physics/code
+  changes):** Human asked for a full file-by-file/folder-by-folder audit to
+  get the repo presentable, with an independent second Claude Code agent
+  used to double-confirm findings before touching anything. Both audits
+  converged on the same list.
+  - **Moved to new `archive/` folder (kept, not deleted — see `archive/
+    README.md` for the full rationale on each item):**
+    `results/phi_single_point_trajectory.png` and `results/phi_switching_
+    check_long_run.png` (pre-pivot L=10 2D-field diagnostics, the dead end
+    that motivated the 0-D pivot — see the 2026-07-11 §9 entry) and
+    `results/phase3_convergence_study_v1_prompt_anchored/` (already
+    self-described as "archived" in this file, just previously sitting
+    directly in `results/` next to current outputs). Updated the two
+    references to this folder's old path in this file (§9, twice) and in
+    `results/phase3_convergence_study_report.md` to the new `archive/
+    results/...` path.
+  - **Deleted (zero-byte or exact-duplicate, no unique content lost):**
+    `results/ledger.json` (confirmed byte-identical, same MD5, to `results/
+    phase3_convergence_study/run_01_ledger.json` — this was the expected
+    output path of `agents/loop.py::main()`, but the committed copy added
+    no information beyond the already-tracked run_01); `tests/test_agents_
+    with_fake_llm.py` (0 bytes — §7 module 3.7 already explicitly documents
+    this file was deliberately never written, "satisfied in spirit" by
+    four other test files; an empty stub had been committed anyway, now
+    removed to match the documented decision); `tests/test_arrhenius.py`
+    (0 bytes — unlike the file above, THIS one was never explained
+    anywhere in this log; a genuine leftover from the original folder
+    skeleton, since superseded by the Arrhenius gate actually living in
+    `tests/test_msm_recovers_two_states.py`/`tests/test_known_answers.py`).
+  - **Fixed a real README.md inconsistency the second agent's audit
+    specifically flagged:** the bolded one-line tagline at the very top
+    still read "Built as a path toward characterizing switching dynamics
+    in moiré (twisted-bilayer) materials" — the exact phrase the
+    2026-07-17 §9 entry above says was corrected as an overclaim. In fact
+    only the "Where moiré materials fit" subsection had been added below
+    it; the tagline itself was never reworded and still contradicted that
+    subsection. Reworded to match the subsection's honest framing
+    (methodology demonstration, motivated by but not derived from moiré
+    physics). Also added `archive/` to the README's repository-structure
+    listing so its presence doesn't need explaining to a reader.
+  - **Verified nothing broke:** grepped the whole codebase (not just docs)
+    for references to every moved/deleted path before touching anything —
+    only `agents/loop.py`/`agents/schemas.py`/`tests/test_schemas.py`
+    referenced `results/ledger.json`, all as the documented write target
+    of `agents.loop.main()`, never as a read dependency. Full suite
+    re-run after all changes: **103 passed, 2 skipped** (same as the
+    pre-cleanup baseline — the 2 skips are the unchanged Lean-oracle
+    Group B tests).
+  - **Left alone, confirmed legitimate by both audits:** `pipeline/
+    reduce.py` and `scripts/run_phase4_moire_demo.py` (both explicitly
+    documented not-yet-built placeholders, not oversights), the `lean/`
+    scaffold (deliberately statement-only per CLAUDE.md's scope
+    boundary), and all current-pipeline code/figures (spot-checked
+    against their own docstrings and CLAUDE.md's physics ground truth,
+    no discrepancies found by either audit).
+  - **Next:** unchanged from Session 11 — Phase 4 (2D deployment) or
+    Module 3.9 (running `ax-prover prove` on the Lean scaffold), human's
+    call.

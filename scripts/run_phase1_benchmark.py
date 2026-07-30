@@ -377,8 +377,14 @@ def main():
     # tolerance instead asks the right question: is this close enough to
     # rule out an actual bug (a wrong formula, a missing factor, a sign
     # error) -- which would produce a >50% deviation, not a few percent.
-    # 10% matches Rolland & Bouchet's own reported "1+/-0.1" agreement for
-    # their much harder field-theoretic case (arXiv:1507.05577 Sec 4.2).
+    # 10% is this project's own choice, not an external benchmark figure:
+    # checked directly against arXiv:1507.05577 (Rolland & Bouchet) and no
+    # specific percent-agreement number for their field-theoretic case
+    # exists anywhere in that paper to match against (PROJECT_STATE.md
+    # Sec 9, 2026-07-30 entry) -- a prior version of this comment claimed
+    # otherwise and was wrong. 10% is instead a generous margin around the
+    # generic O(1/beta) asymptotic correction expected at this project's
+    # own beta (see physics/known_answers.py's docstring).
     SLOPE_RELATIVE_TOLERANCE = 0.10
     if slope_relative_error > SLOPE_RELATIVE_TOLERANCE:
         raise RuntimeError(

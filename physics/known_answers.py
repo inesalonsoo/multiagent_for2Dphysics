@@ -68,14 +68,22 @@ def eyring_kramers_rate_0d(beta, A=1.0):
     exactly without solving anything: the wells sit at exactly x=+-1 and
     the barrier at exactly x=0.
 
-    Asymptotic caveat: this formula is exact only as beta -> infinity. At
-    finite beta (e.g. this project's benchmark beta=5), expect the
-    PREFACTOR to be accurate only to within ~15-20%, tightening as beta
-    grows (see tests/test_known_answers.py and PROJECT_STATE.md Sec 9,
-    where this is checked empirically against simulate_0d.py). The
-    EXPONENT -- the slope of log(rate) vs beta, which is exactly -A --
-    holds regardless of beta and is the ironclad part of this check; the
-    absolute prefactor is the softer, asymptotic part.
+    Asymptotic caveat: this formula is exact only as beta -> infinity. A
+    generic finite-beta correction estimate (order 1/(beta*deltaV)) puts
+    the PREFACTOR's a priori error bound at roughly ~15-20% at this
+    project's benchmark beta=5 -- this is a theoretical upper bound, NOT
+    an empirically-measured figure (no test in this codebase currently
+    compares this formula's prefactor directly against simulate_0d.py
+    output in isolation). In practice this project's actual measured
+    agreement is tighter than that bound within the gated range (beta<=7):
+    Gate 3's measured/predicted rate ratio is 0.92-1.09 (PROJECT_STATE.md
+    Sec 9, 2026-07-11 entry), and Phase 2's total statistical+systematic
+    error bands are 3.16-7.12% (Sec 9, 2026-07-12 entry). The EXPONENT --
+    the slope of log(rate) vs beta, which is exactly -A -- holds
+    regardless of beta and is the ironclad, unconditionally exact part of
+    this check; the absolute prefactor is the softer, asymptotic part,
+    and its real accuracy in this project's own regime is better than the
+    generic bound above.
 
     Parameters
     ----------

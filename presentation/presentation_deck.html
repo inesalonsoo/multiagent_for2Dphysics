@@ -288,7 +288,7 @@
         <div class="arch-box orchestrator"><h4>Orchestrator</h4><div class="role">no LLM, no physics</div><p>Task assignment, feedback routing, owns the stop decision. A pure function of the verdict and iteration count.</p></div>
         <div class="arch-arrow-v"></div>
         <div class="arch-row">
-          <div class="arch-box"><h4>Optimizer</h4><div class="role">≙ Prover</div><p>Proposes (n_clusters, lag). Disciplined by a deterministic tool call — never predicts its own score.</p></div>
+          <div class="arch-box"><h4>Optimizer</h4><div class="role">≙ Prover</div><p>Proposes (n_clusters, lag) via a deterministic tool call. Told not to predict its own score — a prompted norm, not schema-enforced like the other two boxes here.</p></div>
           <div class="arch-box"><h4>Validator</h4><div class="role">≙ Verifier</div><p>Computes hard physics checks in Python <em>before</em> the LLM sees them. Verdict is schema-enforced, not the LLM's opinion.</p></div>
         </div>
         <div class="arch-ledger">every iteration → one JSON ledger entry (config, result, verdict, reasoning)</div>
@@ -326,7 +326,7 @@
     <div class="slide-inner">
       <div class="eyebrow">Phase 3.5: formal verification</div>
       <h2 class="display" style="font-size:1.7rem">The known answers, formally stated</h2>
-      <p class="lead">Every physics check in Phase 3 leans on <span class="mono">known_answers.py</span>'s hardcoded constants — curvature, critical points, barrier height — derived once by hand in a docstring and never independently checked since. Phase 3.5 asks the narrower question that gap leaves open: can those derivations themselves be formally verified, not just trusted? Ax-Prover's actual tool is Lean, not just a structural analogy anymore, so we test it directly on this project's own oracle. The constants are now formally <em>stated</em> in Lean 4 + Mathlib as corollaries of two foundational derivative theorems, so a wrong differentiation can't hide behind a correct-looking substitution.</p>
+      <p class="lead">Every physics check in Phase 3 leans on <span class="mono">known_answers.py</span>'s hardcoded constants — curvature, critical points, barrier height — derived once by hand in a docstring and never independently checked since. Phase 3.5 asks the narrower question that gap leaves open: can those derivations themselves be formally verified, not just trusted? Ax-Prover's actual tool is Lean, not just a structural analogy anymore, so we test it directly on this project's own oracle. The constants are now formally <em>stated</em> in Lean 4 + Mathlib as corollaries of two foundational derivative theorems — once those proofs are actually discharged (not yet: 6 of 7 still end in <span class="mono">sorry</span>, which Lean accepts unconditionally), a wrong differentiation won't be able to hide behind a correct-looking substitution.</p>
       <div class="lean-block" style="margin-top:16px">
         <span class="kw">theorem</span> curvature_at_saddle (A : ℝ) :<br />
         &nbsp;&nbsp;deriv (V' A 0) 0 = -4 * A := <span class="sorry">by sorry</span>

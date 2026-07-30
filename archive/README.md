@@ -13,8 +13,9 @@ L=10 (Sessions 2 and 4, before the Phase 1/Phase 4 pivot — see
 `PROJECT_STATE.md` §9's 2026-07-11 entry). Both show zero committed barrier
 crossings even over long runs; this negative result is exactly what
 motivated moving the primary verified benchmark to the 0-D double well
-instead (where the Eyring-Kramers rate and Boltzmann ratio are both exact
-and closed-form) and demoting the 2D field to Phase 4, targeting a much
+instead (where the Eyring-Kramers rate's exponent is exact and its
+prefactor asymptotically exact, and the Boltzmann ratio is exact by
+symmetry) and demoting the 2D field to Phase 4, targeting a much
 smaller domain (L=2.5) not yet attempted. Kept because they're the direct
 evidence behind that pivot decision, not because they're current results.
 

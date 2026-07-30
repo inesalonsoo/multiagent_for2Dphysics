@@ -14,10 +14,11 @@ trajectories from a stochastic double-well system, verifies the recovered physic
 against **known analytical answers**, and reports **quantified uncertainty**.
 **[2026-07-11] Pivot (see §9 for full reasoning):** the **primary, Phase 1 verified
 engine is now the 0-D stochastic double well** dx = −V'(x)dt + √(2/β)dW, where both
-the Eyring-Kramers rate (including its prefactor) and the Boltzmann well-population
-ratio are exact, closed-form, and directly observable — cleaner than the field ever
-could be, since the Eyring-Kramers prefactor is not known analytically in 2D even in
-the literature. The **stochastic 2D Allen-Cahn field moves to Phase 4** as the
+the Eyring-Kramers rate (exponent exact; prefactor asymptotically exact, matching
+this project's own measured rate to a few percent within its gated β≤7 range) and
+the Boltzmann well-population ratio (exact by symmetry) are closed-form and
+directly observable — cleaner than the field ever could be, since the Eyring-Kramers
+prefactor is not known analytically in 2D even in the literature. The **stochastic 2D Allen-Cahn field moves to Phase 4** as the
 "interesting deployment": the validated pipeline is applied there at small domain
 size so it switches coherently, and its rates are reported with the pipeline's own
 UQ and validated qualitatively against the 0-D reference, not staked on a fragile 2D
@@ -55,10 +56,14 @@ pydantic-ai, h5py, tqdm, pytest.
   no spatial coupling" special case of the 2D equation below; matches Rolland et al.
   arXiv:1507.05577's 1-degree-of-freedom reference system exactly, see §8/§9).
 - The MSM must recover **exactly two macrostates**.
-- **Eyring-Kramers rate is EXACT here, prefactor included** (Rolland et al. Eq. 13,
-  0-D case): T = (2π/|λs|)·√(|V''(xs)|/V''(x0))·exp(β(V(xs)−V(x0))), λs = V''(saddle).
+- **Eyring-Kramers rate: the EXPONENT is exact; the PREFACTOR is asymptotically
+  exact** (β→∞), matching this project's own measured rate to a few percent within
+  its gated β≤7 range, though not empirically verified as a standalone number (see
+  physics/known_answers.py's docstring) (Rolland et al. Eq. 13, 0-D case):
+  T = (2π/|λs|)·√(|V''(xs)|/V''(x0))·exp(β(V(xs)−V(x0))), λs = V''(saddle).
   A log(rate) vs β plot MUST be a straight line of slope −ΔV. This is the centerpiece
-  verification, and unlike the 2D field it is checkable to the exact prefactor.
+  verification, and unlike the 2D field it is checkable to the exact exponent (the
+  prefactor is checkable too, just not to the same unconditional precision).
 - **Boltzmann population ratio is EXACT here too**: P(x_+)/P(x_-) = exp(−βΔF),
   ΔF = V(x_+)−V(x_-) (=0 for symmetric b=0, ≈2b for tilted, see §9 derivation).
 - At equilibrium the dynamics are **time-reversible** (detailed balance holds).
@@ -159,9 +164,10 @@ Note: `physics/simulate_0d.py` is now the Phase 1 primary engine; `physics/simul
 ## 6. Phase roadmap 
 
 - **Phase 1 — Verified engine (0-D).** Stochastic 0-D double-well sim → MSM recovers
-  exactly two states; log(rate) vs β plot matches the EXACT Eyring-Kramers formula
-  (prefactor included); Boltzmann population ratio matches exp(−βΔF) exactly. No
-  agents. This is now the primary, always-checkable benchmark (§9 pivot).
+  exactly two states; log(rate) vs β plot matches the Eyring-Kramers formula
+  (exponent exact, prefactor asymptotically exact — matching this project's own
+  data to a few percent within β≤7); Boltzmann population ratio matches exp(−βΔF)
+  exactly. No agents. This is now the primary, always-checkable benchmark (§9 pivot).
 - **Phase 2 — UQ layer.** BayesianMSM confidence intervals (on the Phase 1 0-D
   engine); analytical rate falls inside the 90% interval; rate plot gains error bars.
 - **Phase 3 — Agentic loop (three-agent architecture, mirrors Ax-Prover arXiv:2510.12787 §3.1: Orchestrator / Prover / Verifier).** Runs against the
@@ -1594,6 +1600,66 @@ Always open a reference and confirm it says what we assume before relying on it.
     project's convention: never edit a past dated entry) with this entry
     serving as the correction of record. Deck fixed to state the real
     justification without the unverifiable citation.
+
+- **[2026-07-30] Two independent agent audits + cross-critique, run
+  deliberately adversarially: two agents separately fact-checked every
+  claim in the presentation deck (physics, citations, terminology,
+  architecture-vs-code), then each critiqued the other's findings and
+  verified what the other had checked. One finding was raised and then
+  RETRACTED after a second, more targeted fetch of the source paper — a
+  real self-correction, not just agreement. Net result: the prior
+  fact-check pass (see the entry above) was correct but scoped to the
+  deck alone; the same claims it fixed there were still live, unfixed, in
+  five other places. All now fixed:**
+  1. **"Eyring-Kramers rate exact, prefactor included" was still live in
+     `README.md`, `CLAUDE.md`'s PHYSICS GROUND TRUTH section, THIS FILE's
+     own §1/§3/§6 (living sections, not historical log entries), and
+     `archive/README.md`** — all now reworded to "exponent exact, prefactor
+     asymptotically exact," consistent with `known_answers.py`'s own
+     docstring and with the deck.
+  2. **The debunked "Rolland-Bouchet 1±0.1, §4.2" citation was still live
+     in executable code**: `scripts/run_phase1_benchmark.py`'s comment
+     justifying `SLOPE_RELATIVE_TOLERANCE = 0.10` stated it as fact. Fixed
+     to state the real justification (a generous margin around the
+     generic asymptotic correction) and explicitly note the prior claim
+     was checked and found wrong, per the entry above.
+  3. **`known_answers.py`'s own docstring cited a specific test file
+     (`tests/test_known_answers.py`) for an empirical check that does not
+     exist there** (no test in that file compares the prefactor against
+     `simulate_0d.py` output). Fixed: the docstring now states the
+     ~15-20% figure as a generic theoretical bound, not a project-specific
+     empirical measurement, and explicitly reconciles it against the
+     project's own actually-tighter measured numbers (Gate 3's 0.92-1.09
+     ratio at β≤7; Phase 2's 3.16-7.12% total error bands) so a reader
+     comparing slides doesn't hit an unreconciled gap between the two
+     figures.
+  4. **Lean oracle slide's "can't hide" framing was present-tense for a
+     future guarantee** — `sorry` accepts a theorem unconditionally, and 6
+     of 7 theorems (including both foundational `HasDerivAt` theorems)
+     still end in `sorry`. Fixed to explicitly state the guarantee holds
+     once proofs are discharged, not yet today.
+  5. **Optimizer's "never predicts its own score" was presented with the
+     same visual/rhetorical confidence as the Validator's and
+     Orchestrator's genuinely code-enforced guarantees, but is actually
+     prompt-level discipline only** (`agents/optimizer.py`'s own docstring:
+     "REASONING QUALITY is demonstrated, not proven"; no schema field
+     prevents the LLM's free-text reasoning from stating a guessed score).
+     Fixed the deck's architecture-slide wording to say plainly this one
+     is a prompted norm, not schema-enforced like the other two.
+  - **Confirmed accurate by both auditors independently, no changes
+    needed**: the Ax-Prover Orchestrator/Prover/Verifier architecture
+    citation (arXiv:2510.12787) verbatim-matches the actual paper's §3.1
+    text; the "no known 2D prefactor" citation (arXiv:1507.05577 §3.2.1)
+    is the paper's own direct claim, not an inferred 1D→2D extrapolation
+    (one auditor raised this as a concern, then retracted it after a
+    second, targeted fetch found the paper's exact sentence); the
+    moiré-materials physics framing matches current TBG literature; the
+    Lean file's 6-sorry/1-proved count; and "103 passed, 2 skipped."
+  - **Left as a documented, disclosed gap, not fixed**: arXiv:2602.24273's
+    connection to the specific `ax-prover` CLI tool name is inferred from
+    shared package/maintainer metadata, not stated in the paper's own
+    abstract text — already transparently described this way in the
+    2026-07-30 entry above, so no further change made.
 
 ## 10. Current status
 

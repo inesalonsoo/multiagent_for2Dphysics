@@ -8,11 +8,12 @@ uncertainty. The benchmark physics is textbook and checkable.
 
 **[2026-07-11] Phase 1/Phase 4 pivot** (see PROJECT_STATE.md §9 for full
 reasoning): Phase 1's verified engine is now the 0-D stochastic double well
-dx = -V'(x)dt + sqrt(2/beta)dW, where BOTH the Eyring-Kramers rate and the
-Boltzmann well-population ratio are exact, closed-form, and observable —
-cleaner and unambiguous, unlike the 2D field where the Eyring-Kramers
-prefactor is not analytically known even in 2D (Rolland, Bouchet &
-Simonnet 2015, arXiv:1507.05577, §3.2.1). The stochastic 2D Allen-Cahn
+dx = -V'(x)dt + sqrt(2/beta)dW, where BOTH the Eyring-Kramers rate (exponent
+exact, prefactor asymptotically exact) and the Boltzmann well-population
+ratio (exact by symmetry) are closed-form and observable — cleaner and
+unambiguous, unlike the 2D field where the Eyring-Kramers prefactor is not
+analytically known even in 2D (Rolland, Bouchet & Simonnet 2015,
+arXiv:1507.05577, §3.2.1). The stochastic 2D Allen-Cahn
 field moves to Phase 4 as the "interesting deployment": run at small L (a
 few interface widths) so it switches coherently, validated qualitatively
 against the 0-D reference rather than staked on a 2D analytical rate.
@@ -64,7 +65,9 @@ your understanding before doing anything.
 Phase 1 (0-D double well, PRIMARY benchmark):
 - V(x) = A(x²−1)² [+ b·x if tilted] has exactly TWO minima. The MSM must
   recover exactly two dominant macrostates.
-- Eyring-Kramers rate (exact, closed-form, incl. prefactor):
+- Eyring-Kramers rate (exponent exact; prefactor asymptotically exact,
+  β→∞, matching this project's own measured rate to a few percent within
+  its gated β≤7 range):
   T = (2π/|λs|)·sqrt(|V''(xs)|/V''(x0))·exp(β(V(xs)−V(x0))) — see
   physics/known_answers.py. A log(rate) vs β plot MUST be a straight line
   of slope −ΔV.

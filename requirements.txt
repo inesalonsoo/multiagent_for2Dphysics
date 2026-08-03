@@ -9,3 +9,8 @@ pydantic-ai==2.7.0
 h5py==3.16.0
 tqdm==4.68.4
 pytest==9.1.1
+
+# Optional, Phase 3.5 only (Lean oracle proof discharge, Module 3.9) --
+# not required for Phases 1-3/4. Human-authorized 2026-07-30 session
+# (PROJECT_STATE.md Sec.9); installed in .venv, PyPI v0.1.1.
+ax-prover==0.1.1

@@ -67,17 +67,18 @@ LAG TIME -- read this before changing LAGTIME_BY_BETA.
 A single fixed lag (originally 20 frames, on the argument that the
 in-well relaxation time is beta-independent) turned out to be WRONG:
 a systematic scan (doubling the lag and checking the implied timescale's
-relative change) showed the lag needed to reach a genuine <5% plateau
-grows sharply with beta -- 10 frames at beta=3-4, up to 160 at beta=8,
-and beta=10 never plateaus even at lag=640 (consistent with finding #1
+relative change) showed the lag needed to reach a genuine <3% plateau
+grows sharply with beta -- 10 frames at beta=3-4, up to 320 at beta=8,
+and beta=10 never plateaus even at lag=1280 (consistent with finding #1
 above: too few transitions to resolve the slow timescale at ANY lag,
-not just a lag-choice problem). LAGTIME_BY_BETA below encodes this,
-with a safety margin beyond the bare convergence point. Using lag=20
-uniformly had been silently contaminating the point estimates at
-beta=6,7 (partially converged, not fully) even within the "trustworthy"
-FIT_BETA_MAX range -- found only when Phase 2's tighter Bayesian
-credible intervals made the resulting bias visible; see PROJECT_STATE.md
-Sec 10 for the full scan table and how this was caught.
+not just a lag-choice problem). LAGTIME_BY_BETA below encodes this
+directly -- NOT hand-padded with extra "safety margin", these are the
+convergence function's exact output. Using lag=20 uniformly had been
+silently contaminating the point estimates at beta=6,7 (partially
+converged, not fully) even within the "trustworthy" FIT_BETA_MAX range
+-- found only when Phase 2's tighter Bayesian credible intervals made
+the resulting bias visible; see PROJECT_STATE.md Sec 10 for the full
+scan table and how this was caught.
 """
 
 import numpy as np
@@ -224,17 +225,24 @@ def run_beta_sweep():
     Run measure_relaxation_rate_at_beta() at every value in BETA_VALUES,
     aggregate each point's mean rate and standard error of the mean, and
     collect the two-state-recovery gate result for every replica at
-    every beta (not just averaged away).
+    every beta (not just averaged away). Also keeps the full per-replica
+    rate array (not just its mean/SEM summary) so downstream consumers --
+    specifically scripts/run_phase2_uq.py's held-out replica-split gate,
+    see PROJECT_STATE.md Sec 9 -- can build an independent, falsifiable
+    check out of disjoint replica subsets instead of only the aggregate.
 
     Returns
     -------
     dict with keys "mean_rate", "sem_rate" (arrays over BETA_VALUES),
-    and "all_two_state_ok" (bool array over BETA_VALUES: True only if
-    EVERY replica at that beta recovered exactly 2 macrostates).
+    "all_two_state_ok" (bool array over BETA_VALUES: True only if EVERY
+    replica at that beta recovered exactly 2 macrostates), and "all_rates"
+    (shape (len(BETA_VALUES), N_REPLICAS): every individual replica's
+    rate estimate, not just the per-beta mean).
     """
     mean_rate = np.empty(len(BETA_VALUES))
     sem_rate = np.empty(len(BETA_VALUES))
     all_two_state_ok = np.empty(len(BETA_VALUES), dtype=bool)
+    all_rates = np.empty((len(BETA_VALUES), N_REPLICAS))
 
     for i, beta in enumerate(BETA_VALUES):
         seed_base = int(beta * 1000)
@@ -243,12 +251,14 @@ def run_beta_sweep():
         mean_rate[i] = rates.mean()
         sem_rate[i] = rates.std(ddof=1) / np.sqrt(N_REPLICAS)
         all_two_state_ok[i] = np.all(two_state_ok)
+        all_rates[i] = rates
 
         print(f"beta={beta}: mean_rate={mean_rate[i]:.6g} +/- {sem_rate[i]:.2g}, "
               f"two-state OK in {two_state_ok.sum()}/{N_REPLICAS} replicas, "
               f"mean population split={np.nanmean(populations, axis=0)}")
 
-    return dict(mean_rate=mean_rate, sem_rate=sem_rate, all_two_state_ok=all_two_state_ok)
+    return dict(mean_rate=mean_rate, sem_rate=sem_rate, all_two_state_ok=all_two_state_ok,
+                all_rates=all_rates)
 
 
 def fit_arrhenius_slope(beta_values, mean_rate, sem_rate):
@@ -333,14 +343,20 @@ def main():
     sweep = run_beta_sweep()
     mean_rate, sem_rate = sweep["mean_rate"], sweep["sem_rate"]
     all_two_state_ok = sweep["all_two_state_ok"]
+    all_rates = sweep["all_rates"]
 
     # Save raw results BEFORE any gate assertion below can raise and abort
     # the script -- this run costs ~15-20 minutes of compute, so a later
     # gate failure must never mean losing it (this bit us once already,
     # see PROJECT_STATE.md Sec 10: the first run's numbers only existed in
-    # a printed, rounded stdout log until this was added).
+    # a printed, rounded stdout log until this was added). all_rates (the
+    # full per-replica array, not just mean_rate/sem_rate) is new -- added
+    # so scripts/run_phase2_uq.py can build its held-out replica-split
+    # gate; all pre-existing keys are unchanged for backward compatibility
+    # with load_phase1_reference() and agents/validator.py.
     np.savez("results/arrhenius_sweep_raw.npz", beta_values=BETA_VALUES,
-             mean_rate=mean_rate, sem_rate=sem_rate, all_two_state_ok=all_two_state_ok)
+             mean_rate=mean_rate, sem_rate=sem_rate, all_two_state_ok=all_two_state_ok,
+             all_rates=all_rates)
     print(f"saved raw sweep results to results/arrhenius_sweep_raw.npz")
 
     print()

@@ -52,7 +52,11 @@ def run_trajectory_0d(n_steps, seed, dt=0.01, beta=5.0, A=1.0, b=0.0, x0=1.0):
         stability bound here (no spatial diffusion to destabilize) -- the
         only requirement is resolving the fastest relaxation timescale,
         1/V''(well) = 1/(8*A) = 0.125 for A=1, which dt=0.01 resolves with
-        a comfortable margin (12-13 steps per relaxation time).
+        a comfortable margin (12-13 steps per relaxation time). Measured
+        directly (beta=5, fixed total physical time, dt=0.01 vs dt=0.005):
+        the production dt=0.01 carries <=0.2% Euler-Maruyama discretization
+        bias relative to the analytical rate -- see PROJECT_STATE.md Sec 9
+        for the full dt sweep.
     beta : float, optional
         Inverse temperature, see above. Default 5.0.
     A : float, optional

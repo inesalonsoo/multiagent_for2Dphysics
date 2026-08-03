@@ -6,7 +6,7 @@
 
 This project asks the following question: can a multi-agent LLM system be trusted to discover the analysis pipeline for a stochastic dynamical system, when every claim it makes is checked against a known, closed-form physical answer?
 
-The benchmark system used in this project is a stochastic double well, dx = −V'(x)dt + √(2/β)dW — the textbook 1-DOF Kramers problem, chosen deliberately because it is one of the few stochastic systems where both sides of the check are closed-form: the Eyring-Kramers escape rate's exponent is exact and its prefactor is asymptotically exact (exact as β→∞, matching this project's own measured rate to a few percent within its gated β≤7 range — see `physics/known_answers.py`), and the equilibrium population ratio (Boltzmann) is exact by symmetry. A Markov State Model (MSM) pipeline is built on trajectory data from this system; its output is checked against those exact answers, not against another model or a fit. Phase 2 adds an honest statistical + systematic error budget on top of that check. Phase 3 wraps the whole pipeline in a three-agent architecture — Orchestrator / Optimizer / Validator, mirroring the Prover/Verifier separation of [Axiomatic AI's Ax-Prover](https://arxiv.org/abs/2510.12787) (Koppens et al.), where an LLM proposes analysis configurations and a second, independent process grounded in the same closed-form physics decides whether to accept them. The LLM never gets to grade its own work.
+The benchmark system used in this project is a stochastic double well, dx = −V'(x)dt + √(2/β)dW — the textbook 1-DOF Kramers problem, chosen deliberately because it is one of the few stochastic systems where both sides of the check are closed-form: the Eyring-Kramers escape rate's exponent is exact and its prefactor is asymptotically exact (exact as β→∞, matching this project's own measured rate to a few percent within its gated β≤7 range — see `physics/known_answers.py`), and the equilibrium population ratio (Boltzmann) is exact by symmetry. A Markov State Model (MSM) pipeline is built on trajectory data from this system; its output is checked against those exact answers, not against another model or a fit. Phase 2 adds an honest statistical + systematic error budget on top of that check. Phase 3 wraps the whole pipeline in a three-agent architecture — Orchestrator / Optimizer / Validator, mirroring the Prover/Verifier separation of [Axiomatic AI's Ax-Prover](https://arxiv.org/abs/2510.12787) (Breen et al.), where an LLM proposes analysis configurations and a second, independent process grounded in the same closed-form physics decides whether to accept them. The LLM never gets to grade its own work.
 
 ### Where moiré materials fit — motivation, not derivation
 
@@ -43,7 +43,7 @@ The top panel below is the classic log-rate view; on a 3-decade log scale, the 1
 
 ### Phase 2 — the uncertainty
 
-A first version of the UQ gate checked the analytical rate against a bare Bayesian credible interval and failed at 4 of 5 test points. This is not a bug, but a bare statistical interval failing to account for the real systematic bias Phase 1 had already measured. The fix follows standard experimental practice: report statistical and systematic uncertainty separately, combine them in quadrature, and gate on the total (**≈3.16%** at the reference β). Verified against the real analytical value before being trusted, not assumed to work.
+A first version of the UQ gate checked the analytical rate against a bare Bayesian credible interval and failed at 4 of 5 test points. This is not a bug, but a bare statistical interval failing to account for the real systematic bias Phase 1 had already measured. The fix follows standard experimental practice: report statistical and systematic uncertainty separately, combine them in quadrature (**≈3.16%** at the reference β), and check the total against the analytical rate. That check was itself genuinely falsifiable at first (it failed twice on real data as the band-centering was debugged), but the fix for those failures — centering the band and the systematic term on the same reference mean — turned out to make containment of the analytical value algebraically guaranteed, not a fact about the data. Found and fixed: the analytical-value check is now a reported consistency check on the arithmetic, not a gate, and a genuinely falsifiable gate replaced it — a held-out split of Phase 1's replicas, testing whether one half's mean falls inside a band built entirely from the other half. Full derivation and fix in `PROJECT_STATE.md`.
 
 ### Phase 3 — the agents search, and the verifier constrains them
 
@@ -68,7 +68,7 @@ physics/       the environment: potential, 0-D/2D integrators, closed-form known
 pipeline/      the analysis: clustering, MSM construction, Bayesian UQ
 agents/        the three-agent loop: schemas, deterministic tool, Optimizer, Validator, Orchestrator
 scripts/       phase entry points (run_phase1_benchmark.py, run_phase2_uq.py, run_phase3_agentic.py, ...)
-tests/         known-answer tests, one file per module, 103 passed / 2 skipped (Lean Group B, pending a real ax-prover run)
+tests/         known-answer tests, one file per module, 102 passed / 3 skipped (Lean Group B, pending a real ax-prover run; plus the new held-out UQ gate, pending a cache regeneration — see PROJECT_STATE.md's 2026-08-03 entry)
 results/       generated plots, raw sweep data, agent ledgers
 archive/       superseded artifacts (pre-pivot dead ends, an old study run) — not part of the current pipeline, kept for the record
 CLAUDE.md          project constitution: engineering discipline and hard boundaries
@@ -83,7 +83,8 @@ cd multiagent_for2Dphysics
 python -m venv .venv
 source .venv/Scripts/activate      # .venv\Scripts\Activate.ps1 on Windows PowerShell
 pip install -r requirements.txt
-pytest tests/ -q                   # 103 passed, 2 skipped (Lean Group B, pending a real ax-prover run), no API key required
+pytest tests/ -q                   # 102 passed, 3 skipped (Lean Group B + the new held-out UQ gate,
+                                    # pending a cache regeneration -- see PROJECT_STATE.md), no API key required
 ```
 
 Phases 1 and 2 run standalone:
@@ -109,4 +110,4 @@ Every module carries a plain-English docstring, named intermediate variables, an
 ## References
 
 - Rolland, Bouchet & Simonnet, *Computing transition rates for the 1-D stochastic Ginzburg–Landau–Allen–Cahn equation*, [arXiv:1507.05577](https://arxiv.org/abs/1507.05577) — the 0-D/2D physics ground truth this project builds on.
-- Axiomatic AI (Koppens et al.), *Ax-Prover*, [arXiv:2510.12787](https://arxiv.org/abs/2510.12787) — the Orchestrator/Prover/Verifier architecture Phase 3's agent design mirrors.
+- Axiomatic AI (Breen et al.), *Ax-Prover*, [arXiv:2510.12787](https://arxiv.org/abs/2510.12787) — the Orchestrator/Prover/Verifier architecture Phase 3's agent design mirrors.

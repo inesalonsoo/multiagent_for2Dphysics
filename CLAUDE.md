@@ -30,7 +30,10 @@ If a simpler-but-longer version exists, write the longer version.
 ## HARD BOUNDARIES (never violate)
 1. NEVER install a package not on the approved list below without asking.
    Approved: numpy, scipy, matplotlib, py-pde, deeptime, scikit-learn,
-   pydantic, pydantic-ai, h5py, tqdm, pytest.
+   pydantic, pydantic-ai, h5py, tqdm, pytest. Also ax-prover (optional,
+   Phase 3.5 only -- Lean oracle proof discharge, Module 3.9; this was
+   explicitly human-authorized in the 2026-07-30 session, PROJECT_STATE.md
+   Sec.9 -- the boundary was not violated, this list was just stale).
 2. NEVER change physics parameters (barrier height, temperature, grid
    size) on your own. These are the human's decisions. Ask.
 3. NEVER add a new agent, tool, or pipeline stage that isn't in the
@@ -90,6 +93,20 @@ Phase 4 (2D stochastic Allen-Cahn field, deployment target):
   both front-width and bifurcation-point matching. Always convert their
   quoted (β,L) thresholds through this factor before using them; see
   PROJECT_STATE.md §9 for the derivation and the corrected formulas.
+- **CAVEAT — the 2D continuum Allen-Cahn SPDE is ill-defined without
+  renormalization, a stronger statement than "the prefactor is unknown."**
+  Rolland, Bouchet & Simonnet §3.2.1, two sentences before the "nothing is
+  known even in dimension 2" passage quoted above: "Allen-Cahn equations
+  are in fact ill-defined when the spatial dimension is strictly larger
+  than one... One has to renormalize the equation properly." Our planned
+  Phase 4 setup (additive white noise, 32×32 grid) has no such
+  renormalization. Consequence: the grid is part of the model definition,
+  not just a numerical convergence knob — results can depend on lattice
+  spacing. A grid-refinement check (same physical L, 32×32 vs 64×64) is
+  required before quoting any Phase 4 rate, and every Phase 4 result must
+  be reported alongside its grid resolution. Flagged, not yet resolved;
+  no Phase 4 physics parameter has been changed because of this. See
+  PROJECT_STATE.md §9 for the full note.
 
 ## TECH STACK NOTES
 - deeptime is the MSM library (successor to PyEMMA). Use
@@ -109,7 +126,7 @@ Phase 4 (2D stochastic Allen-Cahn field, deployment target):
   reminder.**
 - **Phase 3 is a three-agent architecture — Orchestrator / Optimizer / Validator
   — mirroring Ax-Prover's Orchestrator/Prover/Verifier separation (Axiomatic AI,
-  arXiv:2510.12787, Koppens et al., §3.1).** The Orchestrator is a REAL
+  arXiv:2510.12787, Breen et al., §3.1).** The Orchestrator is a REAL
   component (task assignment, feedback routing, owns the stop decision — Ax-Prover
   §3.1.1), not loop plumbing folded into `agents/loop.py`'s while-statement;
   `agents/loop.py` is deliberately thin (instantiates the three agents, hands

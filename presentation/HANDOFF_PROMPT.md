@@ -118,7 +118,7 @@ edit — this list is a snapshot, see the caution at the end.
    Source: `PROJECT_STATE.md` §9, 2026-07-12 "Phase 2 built and PASSED"
    entry (Part B); `scripts/run_phase2_uq.py`.
 6. **Phase 3 architecture** — Orchestrator/Optimizer/Validator mapped to
-   Ax-Prover's Orchestrator/Prover/Verifier (arXiv:2510.12787, Koppens et
+   Ax-Prover's Orchestrator/Prover/Verifier (arXiv:2510.12787, Breen et
    al.). Static description, unlikely to go stale unless the architecture
    itself is refactored.
 7. **Phase 3 result** — 4 runs, iterations 6/4/5/5, accepted configs

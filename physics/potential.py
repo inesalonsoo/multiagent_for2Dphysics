@@ -22,9 +22,9 @@ tilt that breaks the symmetry between the two wells.
 - The tilt shifts the well POSITIONS slightly too (they are no longer
   exactly at phi = +-1) -- see physics/known_answers.py for the exact
   (numerically root-found) well positions and the free-energy difference
-  between them, which is NOT simply b (though b turns out to be an
-  extremely good approximation to 2*b for modest tilts -- again see
-  known_answers.py).
+  between them, which is NOT simply b (2*b, however, turns out to be an
+  extremely good approximation to that free-energy difference for modest
+  tilts -- again see known_answers.py).
 
 The derivative dV/dphi is the force (well, minus the force) that drives
 the deterministic part of the Allen-Cahn dynamics: phi is pushed

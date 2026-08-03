@@ -27,7 +27,7 @@ analytical rate. Moiré stacking domains (twisted bilayer graphene) are the
 tilt parameter b) rather than a separate late demo. The project's real subject is
 the **agentic architecture**: a propose → run → verify → log loop, mirroring the
 **Orchestrator/Prover/Verifier architecture of Axiomatic AI's Ax-Prover**
-(arXiv:2510.12787, Koppens et al.), applied to autonomous uncertainty-quantified
+(arXiv:2510.12787, Breen et al.), applied to autonomous uncertainty-quantified
 MSM discovery — and the 2D-materials focus.
 
 ## 2. Non-negotiable principles (see CLAUDE.md for the full constitution)
@@ -83,6 +83,19 @@ pydantic-ai, h5py, tqdm, pytest.
 - Unit conversion to Rolland-Bouchet's convention is NOT 1:1 at our chosen A=1,
   γ=1: **L_theirs = 2·L_ours** (verified via front-width AND bifurcation-point
   matching, see §9). Always convert their quoted thresholds through this factor.
+- **CAVEAT — the 2D continuum Allen-Cahn SPDE is ill-defined without
+  renormalization; this is stronger than "the prefactor is unknown."** Rolland
+  et al. §3.2.1, two sentences before the "nothing is known even in dimension
+  2" passage already quoted above: "Allen-Cahn equations are in fact
+  ill-defined when the spatial dimension is strictly larger than one... One
+  has to renormalize the equation properly." Our planned setup (additive
+  white noise, 32×32 grid) has no such renormalization, so the grid is part
+  of the model definition, not just a numerical convergence parameter —
+  results can depend on lattice spacing. A grid-refinement check (same
+  physical L, 32×32 vs 64×64) is required before quoting any Phase 4 rate,
+  and every Phase 4 result must be reported with its grid resolution (see §7
+  checklist). Flagged only; no Phase 4 physics parameter changed. See §9 for
+  the full dated note.
 
 ## 4. Chosen parameters (human decisions — do not change without asking)
 
@@ -299,6 +312,11 @@ Phase 4 (2D deployment, was Phase 1 before the pivot):
   attempted; the L=10 attempts that failed are superseded, not resolved (§9).
 - [ ] 4.4 scripts/run_phase4_moire_demo.py — qualitative comparison against Phase 1
   0-D reference (same pipeline, same gates, no 2D analytical rate asserted).
+- [ ] 4.5 Grid-refinement check (NEW, 2026-08-03, see §3/§8/§9 — the SPDE
+  is ill-defined without renormalization, so the grid is part of the model,
+  not a free convergence knob): run the SAME physical L at 32×32 AND 64×64
+  and compare before quoting any Phase 4 rate. Every Phase 4 result must be
+  reported alongside its grid resolution.
 
 Phase 3.5 (Lean oracle for known_answers.py, see CLAUDE.md's "Lean / ax-prover
 scope boundaries"):
@@ -327,6 +345,13 @@ scope boundaries"):
   - §3.2.1 (the passage the human quoted): confirms the Eyring-Kramers PREFACTOR is
     analytically unknown in 2D ("nothing is known even in dimension 2") — this is
     the core reason Phase 1 moved to 0-D rather than trying to nail a 2D rate.
+    **Two sentences EARLIER in the same §3.2.1** (caught 2026-08-03, see §9):
+    "Allen-Cahn equations are in fact ill-defined when the spatial dimension is
+    strictly larger than one... One has to renormalize the equation properly."
+    A stronger statement than "the prefactor is unknown" — the continuum 2D
+    SPDE itself is ill-posed without renormalization our planned setup doesn't
+    have, so the Phase 4 grid is part of the model definition, not just a
+    numerical convergence knob. See §3/§7/§9 for the consequences.
   - §3.3.1 Eq. 20: β\*(L) = exp(L/√2)/(L²|λ0|) threshold for Eyring-Kramers/
     Freidlin-Wentzell validity — needs the factor-2 L-conversion before use in our
     code (see §9).
@@ -585,7 +610,7 @@ Always open a reference and confirm it says what we assume before relying on it.
     exactly on the analytical line; the excluded β>7 points visibly float
     above it. **Phase 1 is done — first artifact produced.**
 - **[2026-07-11] Phase 3 architecture: two agents → three, following Ax-Prover.**
-  Human read Ax-Prover (arXiv:2510.12787, Koppens et al.) and mapped its
+  Human read Ax-Prover (arXiv:2510.12787, Breen et al.) and mapped its
   Orchestrator/Prover/Verifier separation onto the MSM domain. Reasoning:
   - **The core principle borrowed:** an independent, grounded verifier.
     Ax-Prover's Verifier doesn't just check the Prover's work casually — it's
@@ -1661,6 +1686,81 @@ Always open a reference and confirm it says what we assume before relying on it.
     abstract text — already transparently described this way in the
     2026-07-30 entry above, so no further change made.
 
+- **[2026-08-03] Found and fixed: Phase 2's UQ gate had become
+  algebraically unfalsifiable, a side effect of two individually-correct
+  earlier fixes landing on the same denominator.** `scripts/run_phase2_
+  uq.py`'s `check_analytical_value_inside_interval(total_lower,
+  total_upper)` — the gate that checks the analytical relaxation rate
+  falls inside the total (statistical ⊕ systematic) error band — can
+  never fail as currently constructed, and hasn't been able to for a
+  while.
+  - **The gate WAS genuinely falsifiable at one point.** With the total
+    band centered on this module's own single-trajectory Bayesian
+    posterior mean (`rate_mean`), and `systematic_relative` defined
+    relative to `predicted` (the analytical rate) rather than to that
+    center, it failed at β=4 (0.26%, negligible) and β=7 (4.1%, real) —
+    see the 2026-07-12 entry above, Part B. Both of those failures were
+    real findings, correctly diagnosed at the time.
+  - **The fix for those failures is exactly what broke falsifiability,
+    as a side effect neither this file nor the human caught until now.**
+    Two edits, made together and each individually correct on its own
+    terms: (1) re-centering the total band on `phase1_mean_rate` (Phase
+    1's more robust 6-replica ensemble mean, instead of this module's
+    noisier single-trajectory `rate_mean`) — the right fix for a real
+    band-vs-estimate mismatch; (2) redefining `systematic_relative` as
+    `|predicted - phase1_mean_rate| / phase1_mean_rate` — i.e. against
+    that SAME `phase1_mean_rate` denominator, instead of against
+    `predicted` — the right fix for a real direction-of-division
+    inconsistency (see `load_phase1_reference()`'s own docstring, which
+    already documented this half of the story). Once the band's center
+    and `systematic_relative`'s denominator are the same quantity,
+    containment of `predicted` reduces to the algebraic identity
+    `systematic_relative < sqrt(statistical_relative**2 +
+    systematic_relative**2)` — true whenever `statistical_relative > 0`,
+    which it always is. The gate has been unfalsifiable ever since,
+    passing even at β=9 (outside `FIT_BETA_MAX` but still computed),
+    where the systematic is 14.7%.
+  - **Fix, following the human's explicit instruction — keep Phase 2's
+    statistical/systematic decomposition and plot, don't delete Phase 2:**
+    - `check_analytical_value_inside_interval()` renamed to
+      `report_error_budget_decomposition()` and demoted from a
+      `raise`-ing gate to a printed report, with its docstring (and this
+      module's top-of-file GATE note) stating plainly that containment
+      here is guaranteed by construction — a consistency check on
+      whether `build_total_error_band()` computed what it claims to, not
+      a physics test. It must never be turned back into a `raise`.
+    - A REAL, falsifiable gate replaces it: `scripts/run_phase1_
+      benchmark.py::run_beta_sweep()` now also returns (and `main()`
+      saves, under a new `all_rates` key in `results/arrhenius_sweep_raw
+      .npz`, shape `(n_beta, N_REPLICAS)`) every replica's individual
+      rate estimate, not just the per-β mean/SEM — all pre-existing keys
+      unchanged, for backward compatibility with `load_phase1_reference()`
+      and `agents/validator.py::load_rate_tolerance()` (neither touched
+      this session). `scripts/run_phase2_uq.py::load_phase1_replica_
+      split()` splits those per-replica rates into disjoint ODD-indexed
+      and EVEN-indexed subsets; `check_held_out_replica_mean_inside_
+      band()` builds a total band from the odd subset's mean (as both
+      center and the reference point for `systematic_relative`) and
+      tests whether the EVEN subset's mean — real, independently-sampled
+      data the band never saw — falls inside it. No algebraic identity
+      forces this to hold, so it is a real gate again, wired into
+      `main()` with an actual `raise RuntimeError` on failure, gated over
+      `beta <= FIT_BETA_MAX` like Gate 2.
+    - `tests/test_run_phase2_uq.py`'s integration test renamed and
+      re-pointed at the new held-out check (same skip-if-missing-cache
+      behavior). `agents/validator.py::load_rate_tolerance()` was
+      checked and confirmed to depend only on `load_phase1_reference()`
+      and `build_total_error_band()` (both untouched), not on the renamed
+      or removed function — a data-calibrated tolerance is legitimate
+      there and is a separate, explicitly out-of-scope task.
+  - **Not yet re-run against the real cached data this session** (would
+    require regenerating `results/arrhenius_sweep_raw.npz` with the new
+    `all_rates` key — a ~15-20 minute Phase 1 sweep — before the new
+    gate's integration test stops skipping). Next session should re-run
+    `python -m scripts.run_phase1_benchmark` then `python -m scripts.
+    run_phase2_uq` and confirm the held-out gate actually passes (or, if
+    it doesn't, that's a real finding to report, not to loosen away).
+
 ## 10. Current status
 
 - **Phase:** **1 & 2 COMPLETE. Phase 3 CODE-COMPLETE (3.1-3.7) AND its
@@ -2263,3 +2363,167 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   al.), but the installed `ax-prover` package cites arXiv:2602.24273
   (Requena Pozo et al.) instead. **Next:** resume Module 3.9 when funded,
   or proceed with Phase 4; resolve the Ax-Prover citation discrepancy.
+- **[2026-08-03] Session 14 (Phase 2 gate audit — found and fixed an
+  unfalsifiable gate, no other physics/code changes):** Human spotted
+  that `scripts/run_phase2_uq.py`'s analytical-value containment gate
+  can never fail: `systematic_relative` is defined as exactly the
+  deviation the gate then tests for, and the total (quadrature) band is
+  always at least as wide as `systematic_relative` alone. Full derivation
+  and fix in §9 (2026-08-03 entry) above. Built, not just diagnosed:
+  - `scripts/run_phase1_benchmark.py::run_beta_sweep()`/`main()` now
+    save the full per-replica rate array (`all_rates`, shape
+    `(n_beta, N_REPLICAS)`) into `results/arrhenius_sweep_raw.npz`,
+    alongside all pre-existing keys (unchanged).
+  - `scripts/run_phase2_uq.py`: old gate renamed to
+    `report_error_budget_decomposition()`, demoted to a printed report
+    (never a `raise` again — it's tautological by construction, not a
+    physics claim). New real gate: `load_phase1_replica_split()` +
+    `check_held_out_replica_mean_inside_band()` — build a total band
+    from the ODD-indexed replicas, test whether the EVEN-indexed
+    replicas' mean (data the band never saw) falls inside it. Wired into
+    `main()` with an actual `raise RuntimeError` on failure.
+  - Confirmed `agents/validator.py::load_rate_tolerance()` depends only
+    on `load_phase1_reference()`/`build_total_error_band()` (both
+    untouched) — left alone, per the human's explicit instruction.
+  - Updated: this module's GATE docstring, `tests/test_run_phase2_uq.py`
+    (renamed/re-pointed integration test), `README.md`'s Phase 2 section.
+  - **Not yet done:** re-running `run_phase1_benchmark` + `run_phase2_uq`
+    against real data to confirm the new held-out gate actually passes
+    (needs regenerating the cache with the new `all_rates` key — a
+    ~15-20 min sweep). The new integration test currently skips until
+    that cache exists.
+  - **Next:** regenerate `results/arrhenius_sweep_raw.npz`/`uq_sweep_raw
+    .npz` and confirm the held-out gate passes for real; then resume
+    Phase 4 or Module 3.9 per the prior session's open choice.
+- **[2026-08-03] Citation fix: short cites corrected from "Koppens et al." to
+  "Breen et al." across the repo.** Ax-Prover's (arXiv:2510.12787) first
+  author is Benjamin Breen; Koppens is 8th of 9 authors. The 2026-07-30
+  citation audit (Session 13 entry above) verified the full author list
+  correctly but never propagated that correction into the short-cite form
+  used everywhere else in the repo — it stayed "Koppens et al." in seven
+  places until now. Fixed: `CLAUDE.md` (§ TECH STACK NOTES), `README.md`
+  (overview paragraph + references list), `PROJECT_STATE.md` §1 (line ~30)
+  and the 2026-07-11 dated §9 entry (line ~588, edited in place as an
+  explicit exception to the usual no-edit-dated-entries rule, confirmed
+  with the human first), `presentation/HANDOFF_PROMPT.md`,
+  `scripts/run_phase3_agentic.py`'s plot docstring, and both
+  `presentation/presentation_deck.html` and `presentation/deck_template.html`
+  (two occurrences each, including normalizing "Breen, Koppens et al." to
+  "Breen et al."). Deliberately left alone: `PROJECT_STATE.md` line ~1556
+  (lists the full correct author order inside a dated entry, human's
+  explicit instruction not to touch), and lines ~1539/~2337 (dated §9
+  entries from the 2026-07-30 audit session describing, historically, what
+  the README/deck used to cite at that time — correct as a record of what
+  was found, not a live citation to fix).
+- **[2026-08-03] Two small documentation defects fixed: an inverted
+  approximation claim and a stale approved-package list.**
+  - **`physics/potential.py` module docstring (lines ~25-27) had the
+    approximation backwards.** It read "...which is NOT simply b (though b
+    turns out to be an extremely good approximation to 2*b for modest
+    tilts)" — this asserts b approximates 2*b, which is trivially false
+    (b is exactly half of 2*b) and not what the module means. The correct
+    claim, matching `physics/known_answers.py`'s actual derivation and
+    numerical check, is that **2*b is an excellent approximation to the
+    free-energy difference ΔF** for modest tilts: ΔF/(2b) − 1 measures
+    −0.008% at b=0.1 and −0.03% at b=0.2. Rewritten to state that
+    directly.
+  - **`requirements.txt` omitted `ax-prover`, already installed and in
+    use.** `PROJECT_STATE.md`'s 2026-07-30 Session 13 entry (line ~1478)
+    records installing `ax-prover` PyPI v0.1.1 for Module 3.9, and it is
+    present in `.venv/Lib/site-packages` — but it was never added to
+    `requirements.txt`, so a fresh environment rebuild would silently
+    lose it. Added under a comment marking it optional/Phase-3.5-only
+    (Lean oracle proof discharge; not needed for Phases 1-4). Also added
+    to CLAUDE.md's HARD BOUNDARY 1 approved-package list, with a note
+    that this was already human-authorized in the 2026-07-30 session —
+    the boundary itself was never violated, only the written list had
+    gone stale relative to a real, already-approved install.
+  - **Full suite: 102 passed, 3 skipped** (baseline was 103 passed, 2
+    skipped; the one shift is `tests/test_run_phase2_uq.py`'s new
+    held-out-replica integration test, which the same-day citation-fix
+    session's predecessor entry above already documents as skipping
+    until `results/arrhenius_sweep_raw.npz` is regenerated with the new
+    `all_rates` key — not a regression from this session's edits, which
+    touched only docstrings/docs/requirements.txt, nothing importable by
+    the test suite).
+- **[2026-08-03] Fixed four self-contradictions in `scripts/
+  run_phase1_benchmark.py`'s module docstring (the "LAG TIME" section,
+  lines ~66-80) against the file's own constants/inline comments below
+  it — docstring-only, no executable code touched, `LAGTIME_BY_BETA`
+  unchanged.** The docstring had drifted out of sync with the actual
+  `find_converged_lagtime()` results it was describing:
+  1. "a genuine <5% plateau" -> the real `plateau_tolerance` is 0.03
+     (3%), stated correctly in the inline comment at line ~100 and in
+     `pipeline/msm.py`'s own `find_converged_lagtime` default. Fixed to
+     "<3%".
+  2. "up to 160 at beta=8" -> `LAGTIME_BY_BETA[8.0] = 320`; "160" did not
+     appear anywhere else in the file. Fixed to "320".
+  3. "beta=10 never plateaus even at lag=640" -> both the inline comment
+     (lines ~109-110) and `LAGTIME_BY_BETA[10.0]` say 1280. Fixed to
+     "lag=1280".
+  4. "with a safety margin beyond the bare convergence point" -> the
+     inline comment directly below (lines ~103-104) says the opposite:
+     "NOT hand-padded with extra 'safety margin' -- these are the
+     function's exact output." Fixed to match: the docstring now states
+     the values are the convergence function's exact output, not padded.
+  All four corrected values match PROJECT_STATE.md's own recorded
+  `LAGTIME_BY_BETA = {3.0:10, 4.0:10, 5.0:20, 6.0:40, 7.0:40, 8.0:320,
+  9.0:80, 10.0:1280}` (§9, 2026-07-12 "Phase 2 built and PASSED" entry).
+  No test run needed (docstring-only change, confirmed by inspection
+  against the already-passing `tests/test_msm.py::
+  test_find_converged_lagtime_matches_known_plateau_shape`).
+- **[2026-08-03] RESOLVED — the Euler-Maruyama dt-discretization-bias
+  hypothesis, left "genuinely inconclusive, deferred" in the 2026-07-12
+  entry above (NOT edited — that entry stands as the historical record of
+  what was known then), has now been measured directly and ruled out as
+  the source of Phase 1's 3-5% systematic.** Committed-crossing rate at
+  beta=5, total physical time held FIXED at 8e6 time units (so runs at
+  different dt are directly comparable, not just longer/shorter), reported
+  as a ratio to the analytical rate:
+
+  | dt    | measured/analytical |
+  |-------|----------------------|
+  | 0.04  | 0.9852               |
+  | 0.02  | 0.9588               |
+  | 0.01  | 0.9461               |
+  | 0.005 | 0.9444               |
+
+  The production value dt=0.01 therefore carries **<=0.2% discretization
+  bias** (the gap between dt=0.01 and dt=0.005, the finest value measured
+  — the ratio is clearly converging, not still moving at the percent
+  level). This CONFIRMS, rather than contradicts, the project's existing
+  attribution of the 3-5% systematic to finite-beta Eyring-Kramers
+  asymptotic error (Part A, effect 2, in the 2026-07-12 entry): dt-bias is
+  measured too small by an order of magnitude to be the explanation.
+  Stability was also checked and is not a concern at this dt: trajectory
+  range was +/-1.6, giving dt*V''(x) ~ 0.27 worst case, well inside the
+  Euler-Maruyama stable regime. One sentence citing the measured <=0.2%
+  bound was added to `physics/simulate_0d.py`'s `dt` parameter docstring,
+  alongside (not replacing) the existing a-priori "12-13 steps per
+  relaxation time" justification. No executable code changed by this
+  entry; the dt sweep itself was a diagnostic, not a production run.
+- **[2026-08-03] FLAGGED — the planned Phase 4 2D stochastic Allen-Cahn
+  SPDE (additive white noise, 32×32 grid) is a stronger case of "results
+  aren't fully nailed down" than previously documented: the continuum
+  equation is ill-defined without renormalization, not merely missing a
+  known prefactor.** Rolland, Bouchet & Simonnet §3.2.1, two sentences
+  BEFORE the "nothing is known even in dimension 2" passage this repo
+  already quotes throughout (§3/§8, CLAUDE.md): "Allen-Cahn equations are
+  in fact ill-defined when the spatial dimension is strictly larger than
+  one... One has to renormalize the equation properly." Our planned setup
+  has no such renormalization step. Consequence, stated plainly: **the
+  grid (32×32) is part of the model definition, not just a numerical
+  convergence parameter** — results can genuinely depend on lattice
+  spacing, in a way that refining the grid would not simply "converge
+  away" without the missing renormalization. Concrete, actionable
+  consequence added to §7's Phase 4 checklist (new item 4.5): a
+  grid-refinement check (same physical L, 32×32 vs 64×64) is required
+  before any Phase 4 rate is quoted, and every Phase 4 result must be
+  reported alongside its grid resolution. Also added to CLAUDE.md's
+  PHYSICS GROUND TRUTH Phase 4 subsection, this file's §3 Phase 4
+  subsection, and §8's existing arXiv:1507.05577 section-by-section notes
+  (the §3.2.1 entry). **This is a flag, not a fix: no Phase 4 physics
+  parameter (A, beta, b, gamma, grid size, dt) has been changed.** Whether
+  Phase 4 needs an explicit renormalization scheme, a reinterpretation as
+  "lattice model, not continuum limit" (dropping any claim to approximate
+  a continuum SPDE), or something else is a human decision, not yet made.

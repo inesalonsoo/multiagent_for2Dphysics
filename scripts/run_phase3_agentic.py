@@ -205,7 +205,7 @@ def check_converged_rates_inside_uq_band(converged_runs, rate_tolerance):
 
 def make_comparison_plot(accepted_rates, lower, upper, analytical_rate, out_path):
     """The agentic-layer analogue of results/arrhenius.png: bounded
-    outcome despite varied path, shown visually -- the stronger Koppens
+    outcome despite varied path, shown visually -- the stronger Breen et al.
     artifact, since a single clean run could be luck."""
     fig, ax = plt.subplots(figsize=(7, 5))
     run_indices = np.arange(1, len(accepted_rates) + 1)

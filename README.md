@@ -28,7 +28,7 @@ The actual connection is motivation, not derivation: moiré materials are a real
 The three agents in Phase 3, and how they map onto Ax-Prover:
 
 - **Optimizer** (≙ Prover) — proposes the next analysis configuration (cluster count, MSM lag time). Disciplined by a deterministic tool call, never allowed to predict its own score.
-- **Validator** (≙ Verifier) — computes two hard physics checks in plain Python against the closed-form answers *before* any LLM call, then asks an LLM only to interpret an already-decided verdict. The verdict is a property of the schema, not of the LLM's opinion: a `model_validator` recomputes it from the checks on every construction, so an enthusiastic "looks good" from the LLM cannot flip a failing check.
+- **Validator** (≙ Verifier) — computes two hard physics checks in plain Python against the closed-form answers *before* any LLM call, then asks an LLM only to interpret an already-decided verdict. The verdict is a property of the schema, not of the LLM's opinion: a `model_validator` recomputes it from the checks on every construction, so an enthusiastic "looks good" from the LLM cannot flip a failing check. One qualification: the physics *check* (Kramers rate, Boltzmann ratio) is an independent, closed-form oracle, but its *tolerance width* is not an independently chosen precision — `rate_matches_analytical`'s acceptance band (`agents/validator.py::load_rate_tolerance`) reuses Phase 1's own measured total statistical+systematic deviation as the band width, so the gate is set at the precision this project has already demonstrated it can measure, not an independent a-priori target.
 - **Orchestrator** — pure routing. No LLM, no physics judgment: a deterministic function of the Validator's verdict and the iteration count decides whether to continue, accept, or stop at the iteration cap.
 
 ## Verified results
@@ -49,11 +49,11 @@ A first version of the UQ gate checked the analytical rate against a bare Bayesi
 
 An early version of the Optimizer's prompt handed it the converged configuration directly: every one of 8 real runs proposed the identical config on the first try, so the Validator's gate was never tested against a wrong answer. Diagnosed, reported, and fixed: the Optimizer is now given only the search space, not the answer. Four independent real runs (`anthropic:claude-sonnet-5`, real API calls) then showed the property the architecture is actually meant to demonstrate:
 
-- **4/4 runs converged**, taking 4–6 iterations each via different search paths
-- **20 real rejections** across those runs, 100% attributable to the physics gate (a biased rate), 0% to ill-posedness. The Validator is discriminating, not rubber-stamping
-- **4 different accepted configurations**, all landing inside the same pre-fixed uncertainty band
+- **4/4 runs converged**, taking 4–6 iterations each; search paths share early prefixes and then diverge (runs 2 and 3 propose byte-identical first two configs; runs 1 and 4 share their first) — 3 distinct openers, 4 distinct endpoints
+- **16 of 20 proposed configs were genuinely rejected**, 100% attributable to the physics gate (a biased rate), 0% to ill-posedness. The Validator is discriminating, not rubber-stamping
+- The 4 accepted configs are 4 genuinely different `(n_clusters, lag)` pairs, reached via different post-divergence paths, whose measured rates agree with the analytical prediction and with each other to within Phase 2's error band — landing inside the band is true *by construction* here (`rate_matches_analytical` in-band-ness is the Validator's sole binding accept criterion in this study, since `two_states_recovered` was True and `is_ill_posed` False in all 20/20 iterations); the non-trivial part is that 4 independently-searched configs converge on mutually consistent physics while 16 others are correctly turned away
 
-Different debates, same verification standard, consistent accepted physics. This tells us that the verifier is doing real constraining work, not decorating a foregone conclusion.
+Different debates, same verification standard, consistent accepted physics. This tells us that the verifier is doing real constraining work by rejecting wrong configs — not that landing "inside the band" is itself a discovery.
 
 ![Convergence study](results/phase3_convergence_study.png)
 

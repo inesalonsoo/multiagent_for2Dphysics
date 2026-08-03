@@ -143,7 +143,15 @@ Phase 4 (2D stochastic Allen-Cahn field, deployment target):
   Validator's oracle (independent analytical physics: Kramers rate, Boltzmann
   ratio, two-state recovery) are genuinely different checks — a stronger
   verification setup than the one being borrowed from, not a weaker copy of it.
-  Full reasoning: PROJECT_STATE.md §9 (2026-07-11 entry).
+  Full reasoning: PROJECT_STATE.md §9 (2026-07-11 entry). One qualification on
+  "independent": the CHECK (Kramers rate, Boltzmann ratio) is an independent
+  closed-form oracle, but the ACCEPTANCE TOLERANCE around it is not an
+  independently chosen precision -- `agents/validator.py::load_rate_tolerance()`
+  reuses Phase 1's own measured total (statistical+systematic) deviation from
+  the analytical rate as the band width (Phase 1's own ensemble mean sits
+  ~0.29% above the resulting band's floor), so the gate is set at the
+  precision this project has already demonstrated it can measure, not an
+  a-priori target. See PROJECT_STATE.md §9 (2026-08-03 entry).
 
 ## Lean / ax-prover scope boundaries (Phase 3.5)
 

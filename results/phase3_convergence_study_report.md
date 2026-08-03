@@ -35,16 +35,20 @@ turned out to give a genuinely biased rate.
 | Claim | Status |
 |---|---|
 | Convergence rate | **4/4 runs converged** (100%), within 4-6 iterations each |
-| Proposals genuinely diverge across runs | **YES** — 4 different search paths, 4 different iteration counts, 4 different accepted configs |
-| At least one run hits a real physics rejection | **YES** — 20/20 rejected iterations across all 4 runs failed on `rate_matches_analytical`, zero ill-posed, zero tool errors |
+| Proposals share early prefixes, then diverge | **YES** — runs 2/3 propose byte-identical first two configs; runs 1/4 share their first proposal; 3 distinct openers overall, 4 distinct iteration counts, 4 distinct accepted configs |
+| 16/20 proposed configs are genuinely rejected | **YES** — 16/20 iterations across all 4 runs failed on `rate_matches_analytical`, zero ill-posed, zero tool errors |
 | The Optimizer reacts to rejection and moves | **YES** — visible, explicit reasoning over accumulating history in every run (see below) |
-| Every accepted config lands inside the UQ band | **YES** — 4/4, despite 4 different accepted configs |
+| Every accepted config lands inside the UQ band | **True by construction** — `rate_matches_analytical` in-band-ness is the sole binding accept criterion here (`two_states_recovered`=True, `is_ill_posed`=False in all 20/20 iterations); the non-trivial fact is that 4 different search paths all found configs whose rates agree with theory and each other, while 16/20 proposals were genuinely rejected |
 
 **All four qualitative properties the study set out to demonstrate showed up
-in this single 4-run batch.** This is the real two-sided claim: divergent
-search paths, genuinely different accepted configs, bounded outcome anyway.
+in this single 4-run batch.** This is the real two-sided claim: search paths
+that share early prefixes and then genuinely diverge, 16 real rejections, and
+4 different accepted configs whose rates independently agree with theory and
+with each other — not "bounded outcome" as a pass/fail result (acceptance is
+in-band by definition), but the fact that 4 different searches all landed on
+physically consistent answers while 16 others did not.
 
-**One caveat, addressed below, not hidden**: all 20 rejections and all 4
+**One caveat, addressed below, not hidden**: all 16 rejections and all 4
 accepted configs in these particular 4 runs happened to sit on the same
 side of the analytical rate (measured low). That made the demonstrated
 rejections one-directional even though the search paths themselves were
@@ -69,7 +73,7 @@ each other, and only two of which (runs 1 and 3, both `lag=20`) share a
 lag value with what Phase 1 originally established as "the" converged
 choice.
 
-Every one of the 20 rejected iterations across all 4 runs failed
+Every one of the 16 rejected iterations across all 4 runs failed
 specifically on `rate_matches_analytical` — never on `two_states_recovered`,
 never on `is_ill_posed`. Every rejected measured rate (0.0110–0.0117) sits
 **below** the band's lower edge (0.011749): a real, physically consistent
@@ -167,20 +171,30 @@ never authoritative, exactly as designed.
 
 ## What this demonstrates, plainly
 
-- **The search genuinely explores.** Four independent runs took four
-  different numbers of iterations and four different paths through
-  (n_clusters, msm_lagtime) space, sharing at most a partial early
-  trajectory (runs 2 and 3 both started (50,200)→(75,1000) before
-  diverging) — not identical, not templated.
-- **The Validator's gate does real constraining work.** 20 real rejections,
-  100% attributable to genuine physics (a biased rate), 0% to ill-posedness
-  or tool failure — the gate is discriminating between well-posed-but-wrong
-  and well-posed-and-right configs, exactly the Ax-Prover Appendix C
-  distinction this architecture was built around.
-- **The outcome is bounded despite the varied path.** Four different
-  accepted configs, all inside the same pre-fixed UQ band — this is the
-  non-trivial version of the claim the v1 study could not demonstrate,
-  because in v1 every accepted config was identical by construction.
+- **The search genuinely explores, after a shared opening.** Four
+  independent runs took four different numbers of iterations and four
+  different paths through (n_clusters, msm_lagtime) space, but two pairs
+  share an identical opening before diverging: runs 2 and 3 both start
+  (50,200)→(75,1000) — byte-identical configs AND measured rates for their
+  first two iterations — and runs 1 and 4 both start (50,100). 3 distinct
+  opener configs across the shared-prefix portions, not 4 independent
+  searches from iteration 1.
+- **The Validator's gate does real constraining work.** 16 real rejections
+  out of 20 proposed configs, 100% attributable to genuine physics (a
+  biased rate), 0% to ill-posedness or tool failure — the gate is
+  discriminating between well-posed-but-wrong and well-posed-and-right
+  configs, exactly the Ax-Prover Appendix C distinction this architecture
+  was built around.
+- **The Validator genuinely constrains a diverse search.** 4 different
+  accepted `(n_clusters, lag)` pairs were reached via paths that share
+  early prefixes and then diverge — the non-trivial version of the
+  property v1 could not demonstrate, since in v1 every run proposed (and
+  therefore "accepted") the identical config on iteration 1, so no genuine
+  diversity or rejection was ever exercised. Landing inside the UQ band is
+  true *by construction* for any accepted config here (`rate_matches_
+  analytical` in-band-ness is the sole binding criterion); what v2 newly
+  demonstrates is that 4 independently-searched, genuinely different
+  configs all land there while 16 proposals are correctly rejected.
 
 ## Cost and operational notes
 

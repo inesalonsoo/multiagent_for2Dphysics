@@ -2527,3 +2527,66 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   Phase 4 needs an explicit renormalization scheme, a reinterpretation as
   "lattice model, not continuum limit" (dropping any claim to approximate
   a continuum SPDE), or something else is a human decision, not yet made.
+- **[2026-08-03] Three overclaims about the Phase 3 convergence study,
+  caught by re-parsing the raw ledgers rather than trusting the existing
+  prose. All three confirmed real before any doc was touched.**
+  1. **CIRCULARITY.** Parsed all 20 iterations across the 4 ledgers
+     (`results/phase3_convergence_study/run_01..04_ledger.json`) directly:
+     `two_states_recovered=True` and `is_ill_posed=False` in every single
+     one, with no exceptions. That makes `rate_matches_analytical` the
+     sole binding condition for `llm_verdict=ACCEPT` in this study, so
+     "every accepted config lands inside the UQ band" is a restatement of
+     the accept rule, not a finding. Also caught in the same pass: the
+     report and README both said "20 rejections" — the real count is
+     **16 rejected, 4 accepted, out of 20 total iterations** (6+4+5+5).
+     The genuinely non-trivial result, kept rather than discarded: 4
+     different `(n_clusters, lag)` configs, reached by different
+     post-divergence search paths, all measured rates that agree with
+     the analytical prediction and with each other, while 16 other
+     proposed configs were correctly and independently rejected.
+     Reworded in `README.md` (Phase 3 bullets) and
+     `results/phase3_convergence_study_report.md` (headline table + "What
+     this demonstrates" section) to state the real finding and stop
+     calling in-band-ness itself a passed test. Fixed the 20→16 count
+     everywhere it appeared (4 places in the report).
+  2. **PATH DIVERSITY.** Confirmed from the same parse: runs 2 and 3
+     propose byte-identical configs (and, since both reuse the same fixed
+     trajectory, byte-identical measured rates) for their first TWO
+     iterations — (50,200) then (75,1000) — before diverging at
+     iteration 3. Runs 1 and 4 share only their first proposal, (50,100),
+     then diverge at iteration 2. That's 3 distinct configs used as
+     shared-prefix "openers" across the 4 runs, not 4 independent
+     searches from iteration 1. "Proposals genuinely diverge" /
+     "4 different search paths" overstated this. Reworded in the same two
+     files to "paths share early prefixes, then diverge" with the actual
+     shared-prefix configs stated explicitly. The report already included
+     the full per-run proposal sequence table (§"The four runs, in full");
+     no new table was needed, only the surrounding prose.
+  3. **TOLERANCE-WIDTH CIRCULARITY.** The Validator's physics *check*
+     (Kramers rate, Boltzmann ratio) is a genuinely independent,
+     closed-form oracle — that claim is fine. But the *tolerance width*
+     around it is not independently chosen: verified directly against
+     `agents/validator.py::load_rate_tolerance()` and
+     `_compute_physics_checks()` (band is centered on the true analytical
+     rate `2*eyring_kramers_rate_0d(beta=5)`, width = Phase 1's own
+     measured total statistical+systematic deviation). Recomputed the
+     actual numbers from the cached `.npz` files rather than taking the
+     figures as given: band = **[0.0117486, 0.0125165]**, tolerance =
+     3.165%, and Phase 1's own ensemble-mean rate (0.011782) sits
+     **0.29% above the band's floor** — confirms the band is close to the
+     narrowest one that would still admit Phase 1's own measured answer.
+     **One specific figure supplied for this task did NOT check out and
+     was not propagated**: "all 4 accepted rates sit in the bottom 3% of
+     the band" is false as stated — recomputing each accepted rate's
+     position as a percentage of the band's width above the floor gives
+     13.6% (run 1), 6.3% (run 2), 3.3% (run 3), 2.0% (run 4); only runs 3
+     and 4 are near 3%, run 1 is not close. Used the verified 0.29%
+     figure in the doc additions; omitted the unverified "bottom 3%"
+     claim rather than propagate it. Added one qualifying sentence each
+     to `README.md`'s Validator bullet and `CLAUDE.md`'s TECH STACK NOTES
+     (both already asserted "grounded in independent analytical
+     physics"): the check is independent, the tolerance width is Phase
+     1's own measured precision, not an a-priori target.
+  - No physics parameters or executable pipeline code changed by this
+    entry — documentation and report prose only, corrected against the
+    raw ledger/cache data, not loosened or restated from memory.

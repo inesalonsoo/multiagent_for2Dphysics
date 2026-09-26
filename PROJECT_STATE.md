@@ -348,6 +348,11 @@ scope boundaries"):
   never queues `V'_hasDerivAt` in whole-file mode. Target theorems by name
   (e.g. `ax-prover prove "Oracle.Potential:barrier_height_eq" --folder .`,
   untested) with `log_level: DEBUG`. See §9.
+  **[2026-09-26] Superseded:** upgraded to ax-prover 0.2.0, whose
+  elaborator-based target selection was verified live on this file (it
+  queues exactly the 5 open theorems, `V'_hasDerivAt` included). The
+  whole-file command (run from `lean/` with `--folder .`) is safe again;
+  still use `log_level: DEBUG`. See §9 (2026-09-26 entry).
 
 ## 8. Key references to check work against
 
@@ -1902,6 +1907,65 @@ Always open a reference and confirm it says what we assume before relying on it.
     holds its tasks 1–6) added to `.gitignore`, kept locally, not tracked.
     Its tasks 1–6 have not been checked against the repo.
 
+- **[2026-09-26] ax-prover upgraded 0.1.1 → 0.2.0 (human approved); the
+  0.1.1 target-selection issues in the 2026-09-25 entry were already fixed
+  upstream, and 0.2.0's fix is verified live on this file.**
+  - **Upstream history (from the local `ax-prover-base` clone):**
+    elaborator-based declaration listing (`lean_interact`
+    `Command(..., declarations=True)`, sorries matched to declarations by
+    source position) entered ax-prover-base main in commit `ccfd88f`,
+    2026-06-17, six weeks BEFORE our 2026-07-30 run. The PyPI 0.1.1 wheel
+    we had installed predates it; PyPI 0.2.0 ships it. So the 2026-09-25
+    entry's findings are accurate for 0.1.1 but are not new bugs, and must
+    not be reported to Axiomatic as such. (Prompted by Lemma pointing out
+    0.2.0's change; checked here against the clone and the installed 0.2.0
+    wheel, whose `utils/lean_parsing.py` no longer contains the name regex.)
+  - **Terminology:** the 2026-09-25 entry's "target extraction" means
+    target SELECTION (which declarations a whole-file run queues), not
+    extracting a proof goal from a statement. "Target selection" is used
+    from here on, including in the deck.
+  - **Upgrade:** `pip install ax-prover==0.2.0` changed only ax-prover
+    itself (no other package versions moved); `pip check` clean;
+    `requirements.txt` pin updated.
+  - **Verified live (no LLM calls, no credits):** 0.2.0's
+    `parse_prove_target`, run from `lean/` with folder `.` (how the CLI
+    runs), elaborated `Oracle/Potential.lean` through lean_interact's REPL
+    (9 declarations, 5 sorries) and queued exactly `V'_hasDerivAt`,
+    `critical_points_b0`, `curvature_at_wells`, `curvature_at_saddle`,
+    `barrier_height_eq`. This directly confirms the `V'_hasDerivAt` fix.
+    The phantom-`Mathlib` fix is confirmed only by design, not reproduced:
+    the module docstring no longer contains the trigger word.
+  - **A first attempt failed, and it was our invocation, not ax-prover:**
+    calling `get_unproven('lean', 'Oracle/Potential.lean')` from the repo
+    root passed the REPL a path relative to the wrong directory (the REPL
+    runs with cwd `lean/`). One small real robustness point surfaced:
+    `list_declarations_from_file` (`utils/lean_parsing.py:125-137`) reads
+    `.declarations` from the REPL response without checking for
+    `LeanError`, so Lean's actual error message was hidden behind an
+    `AttributeError`.
+  - **Still present in 0.2.0:** `utils/build.py:293` still builds the
+    `lake build` module name with `file_path.replace("/", ".")`, which on
+    Windows presumably yields the "unknown target" fallback to
+    `lake env lean` seen in the 0.1.1 log (cause still inference).
+  - **Deck:** the Lean limitations callout now says the 0.1.1 issues are
+    fixed upstream in 0.2.0, and the next-steps card says to rerun on
+    0.2.0 (the "by name only" advice is gone).
+  - **Unchanged:** `lean/Oracle/Potential.lean` (its "note for editors"
+    names ax-prover 0.1.1 explicitly, so it stays accurate);
+    `results/lean_v_hasDerivAt_check.log` still matches the committed file.
+    The Group B test design problem (§9, 2026-09-25) is unaffected by the
+    upgrade.
+  - **Advice recorded for the human's open question (let Lemma prove the
+    rest?):** not yet. (1) Lemma listed "the remaining 4", but 5 are open;
+    its list omits `V'_hasDerivAt`, so ask why before trusting it. (2)
+    These theorems are the natural test bed for ax-prover 0.2.0, which is
+    what the Axiomatic contacts want feedback on. (3) CLAUDE.md records one
+    Lemma exception; more would make "ax-prover writes proofs" untrue.
+    Suggested order: ax-prover 0.2.0 per theorem, DEBUG, low iteration cap,
+    `barrier_height_eq` first, then `V'_hasDerivAt`; Lemma as a fallback,
+    with the same merge checks (statement unchanged, `#print axioms`,
+    compile on the repo toolchain).
+
 ## 10. Current status
 
 - **Phase:** **1 & 2 COMPLETE. Phase 3 CODE-COMPLETE (3.1-3.7) AND its
@@ -1973,10 +2037,13 @@ Always open a reference and confirm it says what we assume before relying on it.
      2/7 theorems proven: `potential_even_at_b0` (ax-prover) and
      `V_hasDerivAt` (Lemma, outside the ax-prover workflow; see the
      2026-09-25 §9 entry). First, the human decides whether to accept the
-     Lemma proof or have ax-prover re-derive it. Then target the remaining
-     5 BY NAME with `log_level: DEBUG` (a whole-file run never queues
-     `V'_hasDerivAt`, per ax-prover 0.1.1's parser), cheapest first:
-     `barrier_height_eq` (pure algebra). API credits remain a
+     Lemma proof or have ax-prover re-derive it. Then run ax-prover 0.2.0
+     (installed 2026-09-26; its target selection verified live) on the
+     remaining 5 with `log_level: DEBUG` and a low iteration cap, one
+     theorem at a time, cheapest first: `barrier_height_eq` (pure algebra),
+     then `V'_hasDerivAt` (same shape as the 11-times-failed
+     `V_hasDerivAt`, so the most informative). Lemma only as a fallback,
+     with the same merge checks. API credits remain a
      personal-funds constraint (undergraduate project). Completing the
      proofs does NOT by itself flip `tests/test_lean_oracle_consistency.py`'s
      2 skipped tests to passing: Group B needs redesigning first (§9).
@@ -2750,3 +2817,14 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   - **Known issue, not fixed:** Group B tests can't pass as designed (§9).
   - **Next task:** the human decides whether to accept the Lemma proof or
     have ax-prover re-derive it.
+- **[2026-09-26] Session 16 (ax-prover 0.1.1 -> 0.2.0):**
+  - **Built:** upgraded ax-prover to 0.2.0 (only package changed);
+    `requirements.txt` pin updated; deck and §7/§10 notes updated.
+  - **Checks passed:** 0.2.0's target selection, run live on
+    `Potential.lean` (no LLM calls), queued exactly the 5 open theorems,
+    `V'_hasDerivAt` included. `pip check` clean.
+  - **Found:** the 0.1.1 target-selection issues were already fixed
+    upstream (ccfd88f, 2026-06-17); 0.2.0 doesn't check for `LeanError`
+    before reading `.declarations` (minor). Details in §9 (2026-09-26).
+  - **Next task:** run ax-prover 0.2.0 on `barrier_height_eq` (DEBUG, low
+    iteration cap) as the first real 0.2.0 proof attempt.

@@ -172,6 +172,10 @@ OUT OF SCOPE — do not attempt, do not scaffold toward:
 
 Claude Code writes theorem STATEMENTS ending in `sorry`. It does not write
 proof bodies. ax-prover writes proofs.
+**[2026-09-25] One human-authorized exception:** `V_hasDerivAt`'s proof body
+was written by Lemma (an external tool), at the human's explicit direction,
+outside the ax-prover workflow; its statement is unchanged. Claude Code
+still writes no proof bodies. See PROJECT_STATE.md §9 (2026-09-25 entry).
 
 
 ## ARCHITECTURE

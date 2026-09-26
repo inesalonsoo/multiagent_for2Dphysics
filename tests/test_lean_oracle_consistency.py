@@ -56,7 +56,7 @@ def test_rate_prefactor_matches_curvature_formula():
     """
     eyring_kramers_rate_0d(beta, A) internally hardcodes
     curvature_at_well=8*A and curvature_at_barrier=4*A (known_answers.py
-    lines 93-94) inside its prefactor sqrt(8A*4A)/(2*pi). We recover that
+    lines 101-102) inside its prefactor sqrt(8A*4A)/(2*pi). We recover that
     prefactor from the function's OUTPUT (by dividing out the exp(-beta*A)
     exponential factor) and compare it against the same closed-form
     sqrt(8A*4A)/(2*pi) computed independently here. This is exactly what

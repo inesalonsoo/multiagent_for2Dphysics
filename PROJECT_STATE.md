@@ -326,10 +326,28 @@ scope boundaries"):
   lean/Oracle/Potential.lean (7 theorems, all ending in `sorry` — Claude
   Code writes statements only, per CLAUDE.md; ax-prover writes proofs).
   + tests/test_lean_oracle_consistency.py.
+  **[2026-09-25] Toolchain above is stale:** bumped to `v4.33.0-rc1` in
+  commit 076bf31 (2026-07-30). The real constraint is the resolved
+  mathlib rev's own `lean-toolchain` (mathlib `9d302fc` requires
+  v4.33.0-rc1); the Cli inputRev cited in that commit is a symptom of it.
+  The lakefile still has no `rev`; the lock lives in `lake-manifest.json`,
+  which was gitignored (`lean/.gitignore`) and never tracked until
+  2026-09-25, when it was un-ignored and committed. See §9 (2026-09-25).
 - [ ] 3.9 Actually run `cd lean && lake exe cache get && lake build &&
   ax-prover prove Oracle.Potential --folder . -o ../results/lean_oracle_prove_output.json`
   to discharge the 7 sorries — NOT done this session (real LLM calls + a
   multi-GB Mathlib cache fetch, deliberately deferred, see §9).
+  **[2026-09-25] Partial: 2 of 7 proved.** `potential_even_at_b0` by
+  ax-prover (2026-07-30); `V_hasDerivAt` by Lemma, outside the ax-prover
+  workflow at the human's direction (produced 2026-09-15, merged and
+  checked 2026-09-25). 5 still `sorry`: `V'_hasDerivAt`,
+  `critical_points_b0`, `curvature_at_wells`, `curvature_at_saddle`,
+  `barrier_height_eq`. No full batch has completed, so
+  `results/lean_oracle_prove_output.json` still does not exist. **Do not
+  resume with the whole-file command above:** ax-prover 0.1.1's parser
+  never queues `V'_hasDerivAt` in whole-file mode. Target theorems by name
+  (e.g. `ax-prover prove "Oracle.Potential:barrier_height_eq" --folder .`,
+  untested) with `log_level: DEBUG`. See §9.
 
 ## 8. Key references to check work against
 
@@ -1761,6 +1779,129 @@ Always open a reference and confirm it says what we assume before relying on it.
     run_phase2_uq` and confirm the held-out gate actually passes (or, if
     it doesn't, that's a real finding to report, not to loosen away).
 
+- **[2026-09-25] `V_hasDerivAt` proved (by Lemma, outside the ax-prover
+  workflow); ax-prover 0.1.1's source explains the 2026-07-30 batch run's
+  wasted iterations; Mathlib lock committed; stale toolchain notes fixed.**
+  - **What changed:** `lean/Oracle/Potential.lean` gained a proof body for
+    `V_hasDerivAt`, written by Lemma (an external tool; its output is dated
+    2026-09-15) at the human's explicit direction. It was not written by
+    ax-prover or by Claude Code. Proof: `(hasDerivAt_pow 2 x).sub_const 1`
+    (normalized with `simpa`), then `.pow 2`, then `.const_mul A`, plus
+    `(hasDerivAt_id x).const_mul b`, joined with `.add`; the value is
+    rewritten to `V' A b x` with `simp only [V', pow_one]; ring`.
+    - Lemma's proof TERMS are merged unchanged. Its COMMENTS were then
+      corrected by Claude Code: `HasDerivAt.add` and `HasDerivAt.pow`
+      (Mathlib `Deriv/Add.lean:58-61`, `Deriv/Pow.lean:108-111`) are
+      stated for the pointwise `f + g` and `f ^ n`, so the proof matches
+      the goal up to defeq, not "syntactically" as Lemma's comments said.
+    - Module header rewritten: 5 of 7 unproved, provenance of both proofs,
+      and the pre-existing false claim that every theorem "must chain
+      through" the two derivative facts (`barrier_height_eq` and
+      `potential_even_at_b0` use neither) replaced by what the statements
+      actually guarantee. Pre-existing `known_answers.py` line anchors,
+      which had drifted (+8 lines in af4c700; the docstring anchors were
+      also off by one), corrected in `Potential.lean` and in
+      `tests/test_lean_oracle_consistency.py`.
+    - CLAUDE.md's Lean section gained one dated line recording this
+      human-authorized exception (human approved, 2026-09-25).
+  - **Checked independently, not taken from Lemma's own log:**
+    - The patch's base blob (`3d799e3`) is exactly HEAD's file, and it
+      applied cleanly. Lemma's `Potential_proved.lean` is byte-identical to
+      HEAD + patch: all 7 statements and both definitions unchanged; no
+      `axiom`, `admit`, `native_decide`, `unsafe` or `set_option`.
+    - Compiled with `lake env lean` on this repo's own toolchain
+      (v4.33.0-rc1, mathlib `9d302fc`, already built in `lean/.lake`):
+      exit 0, placeholder warnings for exactly the 5 unproved theorems.
+      `#print axioms`: `V_hasDerivAt` and `potential_even_at_b0` depend
+      only on `[propext, Classical.choice, Quot.sound]`; the 5 unproved
+      ones list `sorryAx` (positive control). The final file's check is
+      archived as `results/lean_v_hasDerivAt_check.log`.
+  - **Open, the human's call:** accept the Lemma proof as-is, or have
+    ax-prover re-derive it for provenance parity with
+    `potential_even_at_b0`.
+  - **The Mathlib lock was not in the repo.** `lean/.gitignore` ignored
+    `lake-manifest.json`, so it was never tracked; with no `rev` in the
+    lakefile, a fresh clone would have resolved mathlib master. Un-ignored
+    and committed (human approved), so `9d302fc` is now reproducible. The
+    lakefile itself still has no `rev`.
+  - **Problems in Lemma's own write-up (the proof itself is fine):**
+    - It built on a substitute (path-based Mathlib, released v4.33.0), not
+      the repo's rc1 + `9d302fc`. Superseded by the check above.
+    - Its `lake build CheckAxioms` would fail with "unknown target" on this
+      lakefile: a root-level `CheckAxioms.lean` belongs to no `lean_lib`
+      (the `Oracle` lib's default root covers only `Oracle` and
+      `Oracle.*`), and Lemma's described substitution only changed the
+      mathlib `require`. So its build log is not a verbatim transcript
+      (its Command 1 is also visibly elided with `...`). Reasoned from Lake
+      semantics, not re-run.
+    - Its claim that `lake exe cache get` covers only Mathlib's own oleans
+      is, to our knowledge, wrong: the cache also ships Batteries, Aesop,
+      Qq, ProofWidgets, etc. Locally, `Mathlib.olean` predates
+      `Aesop.olean`, which a from-source build could not produce.
+    - It said `V'_hasDerivAt` "would unblock 3 of the remaining 5
+      corollaries". Per the file's docstrings it is 2 (`curvature_at_wells`,
+      `curvature_at_saddle`); `critical_points_b0` goes through
+      `V_hasDerivAt`. (Lean itself enforces no such route.)
+  - **Correction to the 2026-07-30 Module 3.9 entry above (flagged here,
+    not rewritten there),** from `results/lean_oracle_prove_run.log` plus
+    reading ax-prover 0.1.1's installed source (not by re-running it):
+    - **Phantom target.** ax-prover treats `import` as a declaration type
+      (`models/declaration.py`), and `get_unproven` flags any block whose
+      text matches `\bsorry\b` (`utils/lean_parsing.py:214-244`). The
+      `import Mathlib` block ran through the module docstring, which then
+      contained that word, so a theorem named `Mathlib` was queued. The
+      batch's first 11 iterations (15:29–15:43) went there. The log's
+      `Build successful`, `Review: APPROVED ✓` and `Metrics: 11 total
+      iterations 0 timeouts, 0 compilation errors` are NOT evidence of a
+      proof: 9 of the 11 iterations were rejected before compiling
+      ("Theorem 'Mathlib' not found in proposed code"), and for the other
+      2 ax-prover spliced in only the proposal's `Mathlib` block
+      (`utils/build.py:429-434`), so what compiled was the original file.
+      On approval it copies that temp file over the original
+      (`prover/agent.py:465-470`, `utils/build.py:447-462`), which could
+      alter only the header block, never a proof. The summary's "all 7
+      proved" is unsupported. Mitigated: the module docstring no longer
+      contains the word, with a note for editors saying why.
+    - **`V'_hasDerivAt` was never queued.** `extract_theorem_name`'s regex
+      `([\w.]+)` (`utils/lean_parsing.py:287-310`) stops at the apostrophe
+      and returns `V`; the `V` def has no placeholder, so it is skipped.
+      The 2026-07-30 entry's "never attempted because the run died" is
+      wrong for `V'_hasDerivAt`: no budget would have reached it in
+      whole-file mode. The other 4 were queued; `critical_points_b0` had
+      just started (16:01:19) when credits ran out.
+    - **Build errors were logged at DEBUG, not missing.**
+      `prover/agent.py:420-421` logs the "Build failed with errors:" header
+      at INFO and the errors themselves at DEBUG, and this run used the
+      default `log_level: "INFO"` (`configs/default.yaml:22`). Rerun with
+      DEBUG to capture why the 11 `V_hasDerivAt` attempts failed; that is
+      still unknown. (Weak hint: those builds took 25–28 s, similar to the
+      successful builds that loaded Mathlib, so they likely failed during
+      elaboration, not on imports.)
+    - **Windows `lake build` fallback.** Every ax-prover build logged
+      "'lake build …' failed: unknown target" and fell back to
+      `lake env lean`. The target name is built with
+      `file_path.replace("/", ".")` (`utils/build.py:293`), which leaves
+      Windows backslashes in place; that this is the cause is inference.
+    - Net, established from source: target extraction wasted 11 of the
+      batch's 22 completed iterations and dropped `V'_hasDerivAt`. Unknown:
+      why the 11 genuine `V_hasDerivAt` attempts failed.
+  - **Toolchain correction:** §7 item 3.8 and the 2026-07-27 entry say
+    `v4.27.0`. The toolchain has been `v4.33.0-rc1` since commit 076bf31,
+    matching mathlib `9d302fc`'s own `lean-toolchain`.
+  - **Test design problem (pre-existing, made worse; NOT fixed, separate
+    task):** Group B in `tests/test_lean_oracle_consistency.py` expects one
+    ax-prover JSON reporting all 7 theorems as proved, but a batch run only
+    targets unproved theorems, so `potential_even_at_b0` and
+    `V_hasDerivAt` can never appear in it. Its `"sorry" not in` check is a
+    raw substring match that comments can trip. Both skipped tests
+    therefore can never pass as designed.
+  - **Also done:** deck updated in `presentation/deck_template.html` and
+    the rebuilt `presentation/presentation_deck.html` (Lean slide 5/2,
+    limitations and next-steps text, stale test count 103/2 → 102/3).
+    `lemma-workspace-files.zip` (Lemma's workspace export, ~2 MB, also
+    holds its tasks 1–6) added to `.gitignore`, kept locally, not tracked.
+    Its tasks 1–6 have not been checked against the repo.
+
 ## 10. Current status
 
 - **Phase:** **1 & 2 COMPLETE. Phase 3 CODE-COMPLETE (3.1-3.7) AND its
@@ -1822,19 +1963,23 @@ Always open a reference and confirm it says what we assume before relying on it.
   1.82x analytical) directly against the real pipeline and confirming the
   real Validator check function rejects it, now a permanent test. Full
   detail in §9.
-- **Last check passed:** full suite `tests/`, 103 passed / 2 skipped, ~177s
-  (the 2 skips are the new Lean-oracle Group B tests, gated on ax-prover
-  actually having run — see the 2026-07-27 §9 entry).
+- **Last check passed [2026-09-25]:** full suite `tests/`, 102 passed / 3
+  skipped, ~262s (2 skips are the Lean-oracle Group B tests, gated on an
+  ax-prover output JSON; 1 is the held-out UQ gate, pending a cache
+  regeneration — see the 2026-08-03 §9 entry). Lean file compiled on the
+  repo's own toolchain: `results/lean_v_hasDerivAt_check.log`.
 - **➡️ NEXT TASK:** two independent tracks, either can go first:
-  1. **Module 3.9 (Phase 3.5 side track) — IN PROGRESS, BLOCKED ON API
-     CREDITS (see the 2026-07-30 §9 entry).** 1/7 theorems proven
-     (`potential_even_at_b0`); `V_hasDerivAt` has 11 real documented failed
-     attempts; 4 theorems never attempted. Resume with `cd lean && lake exe
-     cache get && lake build && ax-prover prove Oracle.Potential --folder .
-     -o ../results/lean_oracle_prove_output.json` once more credits are
-     available — this is a personal-funds constraint (undergraduate
-     project), not a technical blocker. Completing it flips `tests/test_
-     lean_oracle_consistency.py`'s 2 skipped tests to passing.
+  1. **Module 3.9 (Phase 3.5 side track) — IN PROGRESS [2026-09-25].**
+     2/7 theorems proven: `potential_even_at_b0` (ax-prover) and
+     `V_hasDerivAt` (Lemma, outside the ax-prover workflow; see the
+     2026-09-25 §9 entry). First, the human decides whether to accept the
+     Lemma proof or have ax-prover re-derive it. Then target the remaining
+     5 BY NAME with `log_level: DEBUG` (a whole-file run never queues
+     `V'_hasDerivAt`, per ax-prover 0.1.1's parser), cheapest first:
+     `barrier_height_eq` (pure algebra). API credits remain a
+     personal-funds constraint (undergraduate project). Completing the
+     proofs does NOT by itself flip `tests/test_lean_oracle_consistency.py`'s
+     2 skipped tests to passing: Group B needs redesigning first (§9).
   2. **Phase 4 (2D deployment, corrected L=2.5)**, per the human's earlier
      explicit ordering. Its own first task is NOT a tilted-potential run —
      `physics/simulate.py` (the 2D field) and its tilt support already
@@ -2590,3 +2735,18 @@ bug, and the single next task. Keep each entry under ~15 lines.)_
   - No physics parameters or executable pipeline code changed by this
     entry — documentation and report prose only, corrected against the
     raw ledger/cache data, not loosened or restated from memory.
+- **[2026-09-25] Session 15 (Lean: `V_hasDerivAt` proof merged from Lemma):**
+  - **Built:** merged Lemma's `V_hasDerivAt` proof (terms unchanged,
+    comments corrected) and rewrote the `Potential.lean` header; committed
+    `lean/lake-manifest.json` (was gitignored); dated exception line in
+    CLAUDE.md; deck updated to 5/2; zip gitignored.
+  - **Checks passed:** compiled on the repo's own v4.33.0-rc1 + mathlib
+    `9d302fc`, with `#print axioms` standard-3-only for both proofs and a
+    `sorryAx` control (`results/lean_v_hasDerivAt_check.log`). Full suite
+    102 passed / 3 skipped.
+  - **Bugs found (ax-prover 0.1.1, from its source):** the parser queues
+    `import Mathlib` as a theorem and truncates `V'_hasDerivAt` to `V`.
+    Build errors go to DEBUG, which the default INFO run never captured.
+  - **Known issue, not fixed:** Group B tests can't pass as designed (§9).
+  - **Next task:** the human decides whether to accept the Lemma proof or
+    have ax-prover re-derive it.

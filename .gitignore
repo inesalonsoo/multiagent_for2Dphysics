@@ -17,6 +17,11 @@ data/*
 # docs instead of redistributing a copy; kept locally, never tracked)
 *.pdf
 
+# Lemma workspace export (external tool's audit/proof artifacts, ~2 MB;
+# kept locally for reference, its merged results are recorded in
+# PROJECT_STATE.md §9, 2026-09-25 entry)
+lemma-workspace-files.zip
+
 # OS
 .DS_Store
 Thumbs.db

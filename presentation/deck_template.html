@@ -326,12 +326,12 @@
     <div class="slide-inner">
       <div class="eyebrow">Phase 3.5: formal verification</div>
       <h2 class="display" style="font-size:1.7rem">The known answers, formally stated</h2>
-      <p class="lead">Every physics check in Phase 3 leans on <span class="mono">known_answers.py</span>'s hardcoded constants — curvature, critical points, barrier height — derived once by hand in a docstring and never independently checked since. Phase 3.5 asks the narrower question that gap leaves open: can those derivations themselves be formally verified, not just trusted? Ax-Prover's actual tool is Lean, not just a structural analogy anymore, so we test it directly on this project's own oracle. The constants are now formally <em>stated</em> in Lean 4 + Mathlib as corollaries of two foundational derivative theorems — once those proofs are actually discharged (not yet: 6 of 7 still end in <span class="mono">sorry</span>, which Lean accepts unconditionally), a wrong differentiation won't be able to hide behind a correct-looking substitution.</p>
+      <p class="lead">Every physics check in Phase 3 leans on <span class="mono">known_answers.py</span>'s hardcoded constants — curvature, critical points, barrier height — derived once by hand in a docstring and never independently checked since. Phase 3.5 asks the narrower question that gap leaves open: can those derivations themselves be formally verified, not just trusted? Ax-Prover's actual tool is Lean, not just a structural analogy anymore, so we test it directly on this project's own oracle. The constants are now formally <em>stated</em> in Lean 4 + Mathlib, curvature and critical points as corollaries of two foundational derivative theorems — once those proofs are actually discharged (not yet: 5 of 7 still end in <span class="mono">sorry</span>, which Lean accepts for any goal, with only a warning), a wrong differentiation won't be able to hide behind a correct-looking substitution.</p>
       <div class="lean-block" style="margin-top:16px">
         <span class="kw">theorem</span> curvature_at_saddle (A : ℝ) :<br />
         &nbsp;&nbsp;deriv (V' A 0) 0 = -4 * A := <span class="sorry">by sorry</span>
       </div>
-      <p class="kicker" style="margin-top:14px">7 theorem statements written; 6 still end in <span class="mono">sorry</span>, 1 (the b=0 symmetry, pure algebra) is fully proved. Scope, drawn deliberately: <strong>Claude Code writes statements — <span class="sorry" style="font-weight:600">ax-prover writes proofs</span>.</strong> Out of scope by design: the Eyring–Kramers rate itself (Fokker–Planck asymptotics, not algebra), any MSM convergence claim, and exact tilted-well positions (irrational roots — <span class="mono">brentq</span> is the honest answer there).</p>
+      <p class="kicker" style="margin-top:14px">7 theorem statements written; 5 still end in <span class="mono">sorry</span>, 2 are fully proved: the b=0 symmetry (pure algebra, via ax-prover) and <span class="mono">V_hasDerivAt</span> (via Lemma, a separate tool, at my direction and outside the ax-prover workflow; <span class="mono">#print axioms</span> shows no <span class="mono">sorryAx</span>). Scope, drawn deliberately: <strong>Claude Code writes statements — <span class="sorry" style="font-weight:600">an external prover writes proofs</span>, never touching the statement.</strong> Out of scope by design: the Eyring–Kramers rate itself (Fokker–Planck asymptotics, not algebra), any MSM convergence claim, and exact tilted-well positions (irrational roots — <span class="mono">brentq</span> is the honest answer there).</p>
     </div>
   </section>
 
@@ -349,7 +349,7 @@
         </div>
         <div class="stack">
           <div class="col-head">Executed by Claude Code</div>
-          <div class="card"><p>Implementation of every module, docstrings, and the test suite (103 passed, 2 skipped).</p></div>
+          <div class="card"><p>Implementation of every module, docstrings, and the test suite (102 passed, 3 skipped).</p></div>
           <div class="card"><p>The session-by-session log in <span class="mono">PROJECT_STATE.md</span>.</p></div>
           <div class="card"><p>Diagnosing <em>why</em> a gate failed once told which gate failed and given the freedom to investigate.</p></div>
           <div class="card"><p>Drafting the agent prompts, schema contracts, and Lean theorem statements, to the design constraints.</p></div>
@@ -422,7 +422,7 @@
         <div class="callout caution"><span class="tag">One-sided, in real runs</span>Confirmed symmetric by a direct pipeline check — but no real <em>agentic</em> run has yet produced an accepted or rejected overestimate.</div>
         <div class="callout caution"><span class="tag">N = 4</span>The convergence study shows the mechanism works, not a failure rate. Tail behavior is untested.</div>
         <div class="callout caution"><span class="tag">Unverified conversion</span>Phase 4's L_theirs = 2·L_ours is analytically self-consistent but not yet checked against a simulated front width.</div>
-        <div class="callout caution"><span class="tag">Lean proofs: attempted, blocked on budget</span>1/7 proven (dry run). <span class="mono">V_hasDerivAt</span> failed 11 real attempts, then the run hit an API credit wall — a personal-funds limit on this undergraduate project, not a technical dead end. Resumes when funded.</div>
+        <div class="callout caution"><span class="tag">Lean proofs: attempted, 2/7 proven</span>The b=0 symmetry via ax-prover; <span class="mono">V_hasDerivAt</span> via Lemma, after 11 failed ax-prover attempts (the errors went to DEBUG, which this run didn't capture) and a personal-funds API credit wall. From ax-prover 0.1.1's source: its target parser queues the <span class="mono">import Mathlib</span> block as a theorem (the batch's first 11 iterations went there) and truncates <span class="mono">V'_hasDerivAt</span> to <span class="mono">V</span>, so never queues it. Target extraction used half the batch; why the 11 real attempts failed is still unknown.</div>
       </div>
     </div>
   </section>
@@ -433,7 +433,7 @@
       <h2 class="display" style="font-size:1.7rem">Two open forward paths</h2>
       <div class="stack" style="margin-top:10px">
         <div class="card"><h3>A · Phase 4 — the 2D deployment</h3><p>Wire the dormant Boltzmann check into <span class="mono">ValidatorDecision</span> (well-identity tracking already built) · numerically validate the L_theirs = 2·L_ours conversion against a simulated front width · run at the corrected L ≈ 2.5, β ≈ 20–30, b = 0.1 · validate qualitatively against the Phase 1 reference — no 2D analytical rate exists in the literature to stake correctness on.</p></div>
-        <div class="card"><h3>B · Module 3.9 — resume discharging the Lean proofs</h3><p>Already attempted for real: 1/7 theorems proven, <span class="mono">V_hasDerivAt</span> failed 11 real iterations, then the run hit an API credit wall — a personal-funds constraint on an undergraduate project, not a technical blocker. Resume <span class="mono">ax-prover prove</span> on the remaining 6 theorems once funded; archive the output as <span class="mono">results/lean_oracle_prove_output.json</span>, which unlocks the 2 currently-skipped Group B consistency tests.</p></div>
+        <div class="card"><h3>B · Module 3.9 — resume discharging the Lean proofs</h3><p>Already attempted for real: 2/7 theorems proven (<span class="mono">V_hasDerivAt</span> via Lemma, after 11 failed ax-prover iterations and an API credit wall — a personal-funds constraint on an undergraduate project). Next: run <span class="mono">ax-prover prove</span> on the remaining 5 theorems by name, with DEBUG logging, since a whole-file run re-triggers the target-parsing issue. The 2 skipped Group B consistency tests also need redesigning: they expect all 7 theorems in one prover output JSON, which a batch run never produces.</p></div>
       </div>
     </div>
   </section>
@@ -442,7 +442,7 @@
     <div class="slide-inner">
       <div class="eyebrow">Close</div>
       <h2 class="display" style="font-size:1.7rem">Questions</h2>
-      <p class="lead" style="margin-top:8px">103 tests passed, 2 skipped (Lean Group B, pending a real prover run) · zero real API calls in the test suite · every session logged in <span class="mono">PROJECT_STATE.md</span>.</p>
+      <p class="lead" style="margin-top:8px">102 tests passed, 3 skipped (2 Lean Group B, gated on a prover output JSON; 1 held-out UQ gate, pending a cache regeneration) · zero real API calls in the test suite · every session logged in <span class="mono">PROJECT_STATE.md</span>.</p>
       <div class="stack" style="margin-top:24px">
         <p class="kicker">Rolland, Bouchet &amp; Simonnet — <em>Computing transition rates for the 1-D stochastic Ginzburg–Landau–Allen-Cahn equation</em>, arXiv:1507.05577</p>
         <p class="kicker">Axiomatic AI (Breen et al.) — <em>Ax-Prover: A Deep Reasoning Agentic Framework for Theorem Proving</em>, arXiv:2510.12787 — the architecture Phase 3 mirrors</p>

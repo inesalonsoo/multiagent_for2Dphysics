@@ -20,10 +20,8 @@ from agents.optimizer import build_optimizer_agent
 from agents.validator import build_validator_agent
 
 _REQUIRES_PHASE2_CACHE = pytest.mark.skipif(
-    not (os.path.exists("results/arrhenius_sweep_raw.npz")
-         and os.path.exists("results/uq_sweep_raw.npz")),
-    reason="requires cached results/arrhenius_sweep_raw.npz and results/uq_sweep_raw.npz -- "
-           "run scripts.run_phase1_benchmark then scripts.run_phase2_uq to generate them",
+    not os.path.exists("results/arrhenius_sweep_raw.npz"),
+    reason="requires results/arrhenius_sweep_raw.npz (run scripts.run_phase1_benchmark)",
 )
 
 
@@ -56,8 +54,8 @@ def test_run_one_real_loop_wires_fake_agents_together_correctly():
     def optimizer_fake_llm(messages, info):
         tool_name = info.output_tools[0].name
         return ModelResponse(parts=[ToolCallPart(tool_name=tool_name, args=dict(
-            config=dict(n_clusters=50, cluster_seed=42, msm_lagtime=20),
-            reasoning="Using Phase 1's own validated config.",
+            config=dict(n_clusters=50, cluster_seed=42, msm_lagtime=1000),
+            reasoning="A converged lag, about 0.1 of the slowest timescale.",
         ))])
 
     def validator_fake_llm(messages, info):

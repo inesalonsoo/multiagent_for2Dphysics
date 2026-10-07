@@ -6,12 +6,13 @@ ValidatorDecision are computed in deterministic Python, independently of
 the LLM's opinion -- this is the validator-level proof that complements
 agents/schemas.py's schema-level guarantee (a computed-False check must
 survive even LLM enthusiasm). Also tested: the three-way ill-posed /
-valid-but-wrong / valid-and-right branch, the reused Phase 2 rate
-tolerance, and the dormant Boltzmann socket.
+valid-but-wrong / valid-and-right branch, the rate tolerance derived from
+Phase 1's replica spread, and the Phase 4 placeholder.
 """
 
 import os
 
+import numpy as np
 import pytest
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -19,15 +20,16 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from agents.schemas import PipelineConfig, PipelineResult
 from agents.validator import (
     REFERENCE_BETA,
+    REFERENCE_DT,
     _check_boltzmann_ratio_matches_analytical,
     build_validator_agent,
     load_rate_tolerance,
+    reference_rate,
     validate_pipeline_result,
 )
-from physics.known_answers import eyring_kramers_rate_0d
 
 _CONFIG = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=20)
-_ANALYTICAL_RATE = 2.0 * eyring_kramers_rate_0d(beta=REFERENCE_BETA)
+_ANALYTICAL_RATE = reference_rate(REFERENCE_BETA)
 _LOOSE_TOLERANCE = 0.05  # a stand-in fixed tolerance for hermetic tests, not read from disk
 
 
@@ -36,10 +38,11 @@ def _tool_call_response(info: AgentInfo, **fields) -> ModelResponse:
     return ModelResponse(parts=[ToolCallPart(tool_name=tool_name, args=fields)])
 
 
-def _well_posed_result(n_macrostates_recovered, relaxation_rate_mean, **overrides):
+def _well_posed_result(timescale_separation, relaxation_rate_mean, **overrides):
     fields = dict(
         config=_CONFIG,
-        n_macrostates_recovered=n_macrostates_recovered,
+        n_macrostates_recovered=2,
+        timescale_separation=timescale_separation,
         macrostate_populations=[0.5, 0.5],
         slowest_implied_timescale=100.0,
         relaxation_rate_mean=relaxation_rate_mean,
@@ -73,7 +76,7 @@ def test_llm_enthusiasm_cannot_flip_a_computed_false_check():
     isolation.
     """
     wrong_number_of_states_result = _well_posed_result(
-        n_macrostates_recovered=1, relaxation_rate_mean=_ANALYTICAL_RATE
+        timescale_separation=1.5, relaxation_rate_mean=_ANALYTICAL_RATE
     )
     agent = _agent_that_always_says("ACCEPT", reasoning="looks great, ship it")
 
@@ -108,7 +111,7 @@ def test_ill_posedness_overrides_even_suspiciously_passing_measurement_fields():
     fine -- ill-posedness is checked first, unconditionally."""
     contradictory_result = PipelineResult(
         config=_CONFIG, error="deeptime rejected a degenerate count matrix",
-        n_macrostates_recovered=2, relaxation_rate_mean=_ANALYTICAL_RATE,
+        timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE,
         trajectory_length_frames=750_000,
     )
     agent = _agent_that_always_says("ACCEPT")
@@ -123,7 +126,7 @@ def test_valid_but_wrong_result_is_rejected_with_llm_interpretation():
     """Outcome 2 of 3: valid config, failed physics. LLM IS called here,
     to interpret which check failed -- unlike the ill-posed branch."""
     wrong_rate_result = _well_posed_result(
-        n_macrostates_recovered=2, relaxation_rate_mean=_ANALYTICAL_RATE * 5.0
+        timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE * 5.0
     )
     call_counter = {"n": 0}
     agent = _agent_that_always_says(
@@ -143,7 +146,7 @@ def test_valid_and_right_result_is_accepted():
     """Outcome 3 of 3: valid config, both physics checks pass -- ACCEPT,
     mechanically, regardless of what the LLM adds."""
     correct_result = _well_posed_result(
-        n_macrostates_recovered=2, relaxation_rate_mean=_ANALYTICAL_RATE
+        timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE
     )
     agent = _agent_that_always_says("ACCEPT", reasoning="both checks passed cleanly")
 
@@ -162,10 +165,10 @@ def test_rate_tolerance_boundary_is_respected():
     not some hardcoded threshold."""
     tolerance = 0.10
     just_inside = _well_posed_result(
-        n_macrostates_recovered=2, relaxation_rate_mean=_ANALYTICAL_RATE * 1.09
+        timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE * 1.09
     )
     just_outside = _well_posed_result(
-        n_macrostates_recovered=2, relaxation_rate_mean=_ANALYTICAL_RATE * 1.11
+        timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE * 1.11
     )
     agent = _agent_that_always_says("ACCEPT")
 
@@ -179,24 +182,33 @@ def test_rate_tolerance_boundary_is_respected():
 def test_boltzmann_socket_is_dormant_not_silently_wrong():
     """The Phase 4 socket must fail loudly if invoked today, not return a
     fabricated-looking answer -- see the function's docstring for why."""
-    dummy_result = _well_posed_result(n_macrostates_recovered=2, relaxation_rate_mean=_ANALYTICAL_RATE)
+    dummy_result = _well_posed_result(timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE)
     with pytest.raises(NotImplementedError):
         _check_boltzmann_ratio_matches_analytical(dummy_result, REFERENCE_BETA, tilt_b=0.1, tolerance=0.1)
 
 
+def test_reference_time_step_matches_the_loop():
+    """The Validator's exact rate must be for the chain the loop simulates."""
+    from agents.loop import DT as loop_dt
+
+    assert REFERENCE_DT == loop_dt
+
+
 @pytest.mark.skipif(
-    not (os.path.exists("results/arrhenius_sweep_raw.npz")
-         and os.path.exists("results/uq_sweep_raw.npz")),
-    reason="requires cached results/arrhenius_sweep_raw.npz and results/uq_sweep_raw.npz -- "
-           "run scripts.run_phase1_benchmark then scripts.run_phase2_uq to generate them",
+    not os.path.exists("results/arrhenius_sweep_raw.npz"),
+    reason="requires results/arrhenius_sweep_raw.npz (run scripts.run_phase1_benchmark)",
 )
-def test_load_rate_tolerance_reuses_the_real_phase2_total_band():
-    """Integration check against real cached Phase 1/2 output: the
-    tolerance at beta=5 must be a small positive number, not a bare
-    statistical width (which was ~1.1% and known to be too tight -- see
-    PROJECT_STATE.md Sec 9) -- it should sit close to Phase 2's own
-    reported ~3.16% total band at this beta."""
+def test_load_rate_tolerance_is_three_replica_sigmas():
+    """
+    Against real Phase 1 output: the tolerance is three times the relative
+    spread of Phase 1's replica rates at beta=5, a few percent.
+    """
+    phase1 = np.load("results/arrhenius_sweep_raw.npz")
+    rates = phase1["rate"][list(phase1["beta_values"]).index(5.0)]
+    rates = rates[~np.isnan(rates)]
+    expected_tolerance = 3.0 * rates.std(ddof=1) / rates.mean()
+
     tolerance = load_rate_tolerance(reference_beta=5.0)
 
-    assert 0.0 < tolerance < 0.20
-    assert tolerance == pytest.approx(0.0316, abs=0.01)
+    assert tolerance == pytest.approx(expected_tolerance)
+    assert 0.0 < tolerance < 0.10

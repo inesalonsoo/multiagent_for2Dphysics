@@ -1,34 +1,44 @@
 """
-Build a Markov State Model (MSM) from a discrete (clustered) trajectory,
-and check it against physics/known_answers.py's ground truth: exactly two
-macrostates, recovered via PCCA+ coarse-graining of the many microstates
-from pipeline/cluster.py, at a lag time where the implied timescales (ITS)
-have plateaued (the standard sign that the model is genuinely Markovian
-at that lag, not an artifact of a too-short lag time).
+Build a Markov State Model (MSM) from a discrete (clustered) trajectory and
+validate it: choose a converged lag time, check Markovianity with a
+Chapman-Kolmogorov test, check timescale separation, and coarse-grain the
+microstates into 2 macrostates with PCCA+.
 """
 
 import numpy as np
 from deeptime.markov import TransitionCountEstimator
 from deeptime.markov.msm import MaximumLikelihoodMSM
 
+# A trajectory spanning N slowest timescales contains about N barrier
+# crossings, so its rate estimate has roughly 1/sqrt(N) relative error.
+# Below 20 (about 20% error) t_2 is not considered resolved.
+MIN_RELAXATIONS_PER_TRAJECTORY = 20
+
+# Gate thresholds for "two metastable states". A single well gives t_2/t_3
+# below 2 and the double well tens or more (tests/test_msm.py). Observed
+# Chapman-Kolmogorov errors at a converged lag are about 0.01.
+MIN_TIMESCALE_SEPARATION = 10.0
+MAX_CK_ERROR = 0.05
+
 
 def build_msm(discrete_trajectory, lagtime):
     """
-    Estimate a reversible maximum-likelihood MSM from a discrete
-    (microstate-labeled) trajectory at a given lag time.
+    Estimate a reversible maximum-likelihood MSM at a given lag time.
+
+    Reversibility (detailed balance) is imposed by the estimator. It is a
+    modeling assumption here, justified because the simulated dynamics are
+    at equilibrium; it is not something this MSM can test.
 
     Parameters
     ----------
     discrete_trajectory : np.ndarray
-        Array of shape (n_frames,): microstate index per frame, e.g.
-        from pipeline.cluster.cluster_trajectory().
+        Microstate index per frame, shape (n_frames,).
     lagtime : int
-        Lag time (in frames) at which to count transitions.
+        Lag time in frames.
 
     Returns
     -------
-    deeptime MSM model
-        Fitted reversible MSM, with .timescales(), .pcca(), etc.
+    deeptime MSM model, with .timescales(), .pcca(), etc.
     """
     count_model = TransitionCountEstimator(
         lagtime=lagtime, count_mode="sliding",
@@ -40,105 +50,89 @@ def build_msm(discrete_trajectory, lagtime):
 
 def implied_timescales(discrete_trajectory, lagtimes):
     """
-    Compute the SLOWEST implied timescale of the MSM at each of several
-    lag times (an "ITS plot"). A plateau -- the slowest timescale
-    stabilizing as lag time increases -- is the standard evidence that
-    the microstate dynamics are Markovian at that lag: the system has
-    "forgotten" its sub-lag-time history.
+    Slowest implied timescale t_2 (in frames) at each lag time.
 
-    Parameters
-    ----------
-    discrete_trajectory : np.ndarray
-        Array of shape (n_frames,): microstate index per frame.
-    lagtimes : sequence of int
-        Lag times (in frames) to evaluate.
-
-    Returns
-    -------
-    np.ndarray
-        Array of shape (len(lagtimes),): the slowest implied timescale
-        at each lag time.
+    An MSM underestimates t_2 at short lags and approaches the true value
+    from below as the lag grows (the variational principle).
     """
     slowest_timescales = []
     for lagtime in lagtimes:
         msm = build_msm(discrete_trajectory, lagtime)
-        timescales = msm.timescales()
-        slowest_timescales.append(timescales[0])
+        slowest_timescales.append(msm.timescales()[0])
 
     return np.array(slowest_timescales)
 
 
-def find_converged_lagtime(discrete_trajectory, candidate_lags, plateau_tolerance=0.03):
+def choose_lagtime(discrete_trajectory, fraction_of_slowest=0.1, initial_lag=10, max_rounds=8):
     """
-    Find the smallest lag time at which the slowest implied timescale has
-    genuinely plateaued, by walking candidate_lags (must be increasing,
-    e.g. a doubling sequence [10, 20, 40, 80, ...]) and returning the
-    smallest lag L such that doubling to the NEXT candidate lag changes
-    the slowest timescale by less than plateau_tolerance (relative).
+    Choose the lag time as a fixed fraction of the slowest implied timescale
+    t_2, found self-consistently: estimate t_2 at the current lag, set
+    lag = fraction * t_2, and repeat until the lag changes by less than 10%.
 
-    A loose tolerance is dangerous here: it can call a curve that is
-    still visibly climbing a "plateau" (e.g. a 25% tolerance would accept
-    a +12.84% step as converged, which it plainly isn't -- this is what
-    went wrong the first time this project picked a lag time, see
-    PROJECT_STATE.md Sec 10). plateau_tolerance=0.03 (3%) is tight enough
-    to actually distinguish "still climbing" from "flat".
+    Why this rule: the short-lag bias of t_2 shrinks slowly (roughly as
+    1/lag), so waiting for t_2 to stop changing between lag doublings stops
+    too early. A lag of about 0.1 * t_2 removes the bias to about 1% for
+    this system while still resolving t_2.
 
-    Parameters
-    ----------
-    discrete_trajectory : np.ndarray
-        Array of shape (n_frames,): microstate index per frame.
-    candidate_lags : sequence of int
-        Increasing lag times (in frames) to test, e.g. a doubling
-        sequence. Must have at least 2 entries.
-    plateau_tolerance : float, optional
-        Maximum allowed relative change between successive candidate
-        lags to call the smaller one "converged". Default 0.03 (3%).
-
-    Returns
-    -------
-    converged_lag : int or None
-        The smallest candidate lag meeting the plateau criterion, or
-        None if NO candidate lag in the list satisfies it -- this is a
-        real, reportable finding (not enough data to resolve the slow
-        timescale at any tested lag), not an error to hide.
-    timescales : list of float
-        The slowest implied timescale at each candidate lag, in the same
-        order as candidate_lags, for inspection or plotting.
+    Returns the lag in frames, or None if t_2 cannot be resolved: the lag
+    does not settle within max_rounds, or the trajectory spans fewer than
+    MIN_RELAXATIONS_PER_TRAJECTORY slowest timescales.
     """
-    timescales = list(implied_timescales(discrete_trajectory, candidate_lags))
+    n_frames = len(discrete_trajectory)
+    lagtime = initial_lag
+    for _ in range(max_rounds):
+        slowest_timescale = build_msm(discrete_trajectory, lagtime).timescales()[0]
+        if slowest_timescale * MIN_RELAXATIONS_PER_TRAJECTORY > n_frames:
+            return None
+        next_lagtime = max(1, int(round(fraction_of_slowest * slowest_timescale)))
+        if abs(next_lagtime - lagtime) <= 0.1 * lagtime:
+            return next_lagtime
+        lagtime = next_lagtime
 
-    converged_lag = None
-    for i in range(1, len(candidate_lags)):
-        relative_change = abs(timescales[i] - timescales[i - 1]) / timescales[i - 1]
-        if relative_change < plateau_tolerance:
-            converged_lag = candidate_lags[i - 1]
-            break
+    return None
 
-    return converged_lag, timescales
+
+def chapman_kolmogorov_error(discrete_trajectory, lagtime, n_multiples=4):
+    """
+    Largest gap between predicted and directly estimated 2-macrostate
+    transition probabilities at lags k * lagtime, for k = 1..n_multiples.
+
+    The prediction propagates the model at lagtime k times; the estimate
+    builds a new model at k * lagtime. A Markovian model makes them agree,
+    so a small value (well below 0.05) supports the chosen lag.
+    """
+    models = [build_msm(discrete_trajectory, lagtime * k) for k in range(1, n_multiples + 1)]
+    ck_result = models[0].ck_test(models, n_metastable_sets=2)
+    largest_gap = np.max(np.abs(ck_result.predictions - ck_result.estimates))
+    return float(largest_gap)
+
+
+def timescale_separation(msm):
+    """
+    Ratio t_2 / t_3 of the two slowest implied timescales.
+
+    A double well has one slow process (crossing the barrier) and fast
+    in-well relaxation, so t_2 / t_3 is large (tens or more; about 44 at
+    beta=5 and the chosen lag). A single well has no slow process and gives
+    a ratio below 2. This is
+    the evidence for two metastable states; PCCA+ alone is not, because it
+    always returns as many sets as it is asked for.
+    """
+    timescales = msm.timescales()
+    return timescales[0] / timescales[1]
 
 
 def recover_two_macrostates(discrete_trajectory, lagtime):
     """
-    Coarse-grain the many microstates into exactly 2 metastable
-    macrostates via PCCA+, at the given lag time.
-
-    Parameters
-    ----------
-    discrete_trajectory : np.ndarray
-        Array of shape (n_frames,): microstate index per frame.
-    lagtime : int
-        Lag time (in frames), ideally chosen where implied_timescales()
-        has plateaued.
+    Coarse-grain the microstates into 2 macrostates with PCCA+.
 
     Returns
     -------
     msm : deeptime MSM model
-        The fitted microstate-level MSM (see build_msm()).
+        The microstate MSM (see build_msm()).
     pcca_model : deeptime.markov.PCCAModel
-        The 2-macrostate coarse-graining. `.assignments` gives the
-        macrostate (0 or 1) each MICROSTATE belongs to;
-        `.coarse_grained_stationary_probability` gives the population of
-        each of the 2 macrostates.
+        `.assignments` gives each microstate's macrostate (0 or 1);
+        `.coarse_grained_stationary_probability` gives the 2 populations.
     """
     msm = build_msm(discrete_trajectory, lagtime)
     pcca_model = msm.pcca(n_metastable_sets=2)

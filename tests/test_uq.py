@@ -1,17 +1,8 @@
 """
-Statistical-correctness tests for pipeline/uq.py.
-
-Uses a real 0-D trajectory at the project's baseline beta=5.0 and checks
-properties the Bayesian credible interval machinery itself must satisfy
-(well-orderedness, shrinking with more data, widening with confidence).
-
-Scope note: this module intentionally does NOT check the credible interval
-against the analytical rate from physics/known_answers.py. A single-trajectory
-statistical CI is not expected to always contain the true value once a real,
-separately-characterized systematic bias exists (see the note on
-test_credible_interval_scales_down_with_more_data below, and
-PROJECT_STATE.md Sec 9). That accuracy check lives at the Phase 2 level
-(tests/test_run_phase2_uq.py), where the systematic term is available.
+Tests for pipeline/uq.py on a real 0-D trajectory at beta=5: the Bayesian
+credible interval must be well ordered, shrink with more data, and widen
+with higher confidence. Whether these intervals are honest (their coverage
+of the exact rate) is measured in scripts/run_phase2_uq.py.
 """
 
 import numpy as np
@@ -45,30 +36,8 @@ def test_credible_interval_is_well_ordered_and_contains_the_mean():
 
 def test_credible_interval_scales_down_with_more_data():
     """
-    A statistical-correctness check for the CI machinery itself: doubling
-    the trajectory length should shrink (or at worst not grow) the interval,
-    since it is purely a sampling-uncertainty statement about a fixed model.
-
-    NOTE on scope: this module's known-answer test used to also assert that
-    the analytical relaxation rate (2x physics.known_answers.eyring_kramers_rate_0d,
-    see RATE CONVENTION note in scripts/run_phase1_benchmark.py) falls inside
-    the 90% credible interval. That assertion has been REMOVED, not loosened
-    -- its premise was physically wrong, not its tolerance too tight.
-
-    A single-trajectory Bayesian credible interval only captures STATISTICAL
-    (sampling) uncertainty. Phase 1's 6-replica ensemble already measured a
-    real, ~2-9% SYSTEMATIC bias (sparse-transition-count effects at high beta,
-    plus a genuine asymptotic 1/beta correction to the Eyring-Kramers prefactor
-    -- see PROJECT_STATE.md Sec 9) that a single-replica statistical CI does not,
-    and should not be expected to, cover. Demanding pure-CI containment here
-    was demanding the wrong thing of this module.
-
-    That accuracy question -- does the analytical value fall inside a properly
-    combined statistical (+) systematic error budget -- is now asserted at the
-    Phase 2 level (tests/test_run_phase2_uq.py), where the systematic term
-    (characterized from Phase 1, outside this module) actually lives. This
-    module's job is only to compute a correctly-behaved statistical interval,
-    which the tests below verify.
+    Doubling the trajectory length must shrink (or at worst not grow) the
+    interval, since it describes sampling noise for a fixed model.
     """
     beta = 5.0
     short_trajectory = _sample_discrete_trajectory(n_steps=750_000, seed=7, beta=beta)

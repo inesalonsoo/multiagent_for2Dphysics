@@ -4,16 +4,10 @@ The 0-D benchmark engine: a single Brownian particle moving in the same
 
     dx = -V'(x) dt + sqrt(2/beta) dW
 
-This is the "one degree of freedom" reference system that Rolland, Bouchet
-& Simonnet (arXiv:1507.05577) use as the benchmark whose scaling laws every
-extended-field result is checked against (their Sec. 2.1/3.2.1) -- there is
-no spatial coupling, so this is exactly our 2D equation's gamma=1 case with
-the Laplacian term dropped. Unlike the 2D field (physics/simulate.py), BOTH
-the Eyring-Kramers rate and the Boltzmann population ratio between the two
-wells are exact, closed-form, and directly observable from a trajectory --
-see physics/known_answers.py for both formulas. This makes 0-D the clean,
-always-checkable Phase 1 engine; the 2D field is Phase 4's deployment.
-See PROJECT_STATE.md Sec 9 for the full reasoning behind this pivot.
+It is the 2D field equation (physics/simulate.py) with the spatial coupling
+removed. Unlike the field, its relaxation rate and well populations can be
+computed exactly (physics/known_answers.py), which makes it the checkable
+Phase 1 benchmark.
 """
 
 import numpy as np
@@ -52,11 +46,11 @@ def run_trajectory_0d(n_steps, seed, dt=0.01, beta=5.0, A=1.0, b=0.0, x0=1.0):
         stability bound here (no spatial diffusion to destabilize) -- the
         only requirement is resolving the fastest relaxation timescale,
         1/V''(well) = 1/(8*A) = 0.125 for A=1, which dt=0.01 resolves with
-        a comfortable margin (12-13 steps per relaxation time). Measured
-        directly (beta=5, fixed total physical time, dt=0.01 vs dt=0.005):
-        the production dt=0.01 carries <=0.2% Euler-Maruyama discretization
-        bias relative to the analytical rate -- see PROJECT_STATE.md Sec 9
-        for the full dt sweep.
+        a comfortable margin (12-13 steps per relaxation time). The finite
+        step still biases the dynamics: at dt=0.01 the simulated chain
+        relaxes about 1.2% faster than the continuous equation, which
+        physics.known_answers.euler_maruyama_relaxation_rate_0d() computes
+        exactly. Phase 1 compares against that chain rate.
     beta : float, optional
         Inverse temperature, see above. Default 5.0.
     A : float, optional

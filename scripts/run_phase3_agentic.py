@@ -1,79 +1,26 @@
 """
-Phase 3 convergence-robustness study (PROJECT_STATE.md Sec 9/10, the
-PI-flagged next step once the three-agent loop existed). Runs the REAL
-agentic loop (agents/loop.py, agents/orchestrator.py) N_REPETITIONS times
-on ONE fixed reference trajectory at REFERENCE_BETA (agents/validator.py
--- Phase 1/2's clean beta<=7 range, where the rate gate has real teeth.
-A high-beta demo would prove nothing: Phase 2 already showed the total
-error band widens with sparse transition counts until almost anything
-passes -- see PROJECT_STATE.md Sec 9).
+Phase 3 study: run the real agentic loop (agents/loop.py) N_REPETITIONS
+times on one fixed reference trajectory at REFERENCE_BETA, saving every
+run's ledger.
 
-WHAT THIS STUDY PROVES -- two things in tension, on purpose:
-1. The search is genuinely non-deterministic: repeated runs' ledgers must
-   visibly differ -- different configs proposed, different iteration
-   counts, different reasoning. If they came back identical, either the
-   LLM isn't actually varying or the logging is too coarse to see it --
-   either way that would be a finding, not a footnote, and is reported as
-   such by check_paths_differ() below.
-2. Despite divergent paths, every CONVERGED run's accepted config's
-   measured rate falls inside Phase 2's own total (statistical (+)
-   systematic) error band around the analytical rate -- the outcome is
-   bounded even though the path isn't. This is the empirical,
-   DEMONSTRATED (not asserted) proof that agents/validator.py's gate does
-   real constraining work: identical outcomes every time would mean the
-   gate isn't being tested by real variation; outcomes scattered beyond
-   the UQ band would mean the gate is too permissive or the UQ too tight.
+What it shows:
+1. Whether independent runs search differently (check_paths_differ()).
+2. Which configs the Validator accepts or rejects, and how the Optimizer
+   reacts to rejections (in the ledgers).
+Accepted rates lie inside the Validator's band by construction (that is the
+accept rule), so the plot shows where they fall within it; it is not an
+independent test.
 
-MAKES REAL API CALLS -- requires ANTHROPIC_API_KEY. Never run from the
-test suite: tests/test_orchestrator.py and tests/test_loop.py already
-cover all the deterministic routing/ledger-faithfulness/wiring machinery
-this script exercises, with fakes. Only the agents' reasoning quality is
-demonstrated here, not unit-tested -- consistent with agents/optimizer.py
-and agents/validator.py's own documented demonstrated-not-proven stance.
+The recorded study (4 runs, 20 iterations) was judged against the old
+Eyring-Kramers reference; scripts/rescore_phase3_ledgers.py re-scores its
+configs under the current gates.
 
-HONESTY, IN ADVANCE: this script reports whatever it actually observes.
-A convergence rate below N_REPETITIONS/N_REPETITIONS is a real,
-reportable property of the loop's reliability at these settings, not a
-bug to hide (summarize_convergence() below never conflates an exhausted
-run with a converged one -- see agents/orchestrator.py's stop_reason).
-A converged run whose accepted rate falls OUTSIDE the UQ band is a real
-finding about the gate or the UQ (check_converged_rates_inside_uq_band()
-reports it plainly, does not filter it out). Go in willing to find either.
+Makes real API calls (requires ANTHROPIC_API_KEY); never run from the test
+suite, which covers the loop machinery with fake agents.
 
-OUTPUT: every run's ledger persisted to
-results/phase3_convergence_study/run_NN_ledger.json (before any analysis
-that could fail and lose the data -- the lesson Phase 1 already paid for,
-PROJECT_STATE.md Sec 9), plus results/phase3_convergence_study.png -- the
-agentic-layer analogue of results/arrhenius.png: bounded outcome despite
-varied path, shown visually.
-
-[2026-07-12 REDESIGN + HONEST SCOPING, PROJECT_STATE.md Sec 9.] The first
-version of this study (N_REPETITIONS=8) ran under a SearchBounds that
-handed the Optimizer the converged msm_lagtime directly -- every one of 8
-real runs proposed the byte-identical config on iteration 1, so the
-Validator's gate was never exercised against a genuinely wrong config.
-Fixed in agents/optimizer.py: SearchBounds now states only the physical
-reasoning that bounds a sensible lag, not the solved value, so a real
-search actually has to happen. N_REPETITIONS dropped from 8 to 4:
-budget is real, and what the claim needs is not statistical weight but
-four QUALITATIVE properties -- (a) proposals genuinely diverge across
-runs, (b) at least one run hits a config the Validator rejects on real
-physics grounds, (c) the Optimizer reacts to that rejection and moves,
-(d) every accepted config lands inside the UQ band. A single real dry
-run under the redesigned prompt already demonstrated (b), (c), and (d)
-in one pass (6 iterations: 5 genuine physics rejections, each with the
-Optimizer visibly reasoning over its own accumulating history, converging
-on a DIFFERENT config than the old anchored answer, measured rate inside
-the UQ band) -- that run is reused here as run_01 (its trajectory is
-byte-identical to what build_reference_context(seed=7) below produces,
-so nothing about reusing it is inconsistent with a fresh run). The
-remaining repetitions exist mainly to confirm (a): that independent runs
-genuinely propose different search paths, not just that one run can
-search internally.
-
-RUN THIS WITH `-m`: `python -m scripts.run_phase3_agentic` from the
-project root (same reason as run_phase1_benchmark.py -- see its
-docstring).
+Output: results/phase3_convergence_study/run_NN_ledger.json (saved before
+any analysis) and results/phase3_convergence_study.png.
+Run from the project root: python -m scripts.run_phase3_agentic
 """
 
 from pathlib import Path
@@ -85,10 +32,9 @@ import numpy as np
 
 from agents.loop import build_reference_context, run_one_real_loop
 from agents.schemas import AgenticRun
-from agents.validator import REFERENCE_BETA
-from physics.known_answers import eyring_kramers_rate_0d
+from agents.validator import REFERENCE_BETA, reference_rate
 
-N_REPETITIONS = 4  # [2026-07-12] revised down from 8 -- see module docstring's "HONEST SCOPING"
+N_REPETITIONS = 4
 # note. The minimum that demonstrates the four qualitative properties the claim needs, not a
 # stats-gathering run; run_01 is already reused from a real dry run under this same design.
 LEDGER_DIR = Path("results/phase3_convergence_study")
@@ -177,20 +123,18 @@ def check_paths_differ(runs):
         print(f"  run {i}: {len(run.entries)} iterations -- " + " -> ".join(steps))
 
 
-def check_converged_rates_inside_uq_band(converged_runs, rate_tolerance):
+def check_accepted_rates_inside_band(converged_runs, rate_tolerance):
     """
-    The other half of the claim: every converged run's accepted config's
-    measured rate must fall inside Phase 2's own total error band around
-    the analytical rate. Reports each one; a run OUTSIDE the band is
-    printed as such, not hidden -- that would be a real finding about the
-    gate or the UQ, not something to paper over here.
+    Report where each converged run's accepted rate lies within the
+    Validator's band around the exact chain rate. Inside is guaranteed by
+    the accept rule; an OUTSIDE line would mean the loop's bookkeeping broke.
     """
-    analytical_rate = 2.0 * eyring_kramers_rate_0d(beta=REFERENCE_BETA)
+    analytical_rate = reference_rate(REFERENCE_BETA)
     lower = analytical_rate * (1.0 - rate_tolerance)
     upper = analytical_rate * (1.0 + rate_tolerance)
 
-    print(f"\n=== Accepted rates vs. Phase 2 total error band "
-          f"[{lower:.6g}, {upper:.6g}] (analytical={analytical_rate:.6g}) ===")
+    print(f"\n=== Accepted rates vs. the Validator's band "
+          f"[{lower:.6g}, {upper:.6g}] (exact chain rate={analytical_rate:.6g}) ===")
     accepted_rates = []
     all_inside = True
     for i, run in enumerate(converged_runs, start=1):
@@ -204,17 +148,15 @@ def check_converged_rates_inside_uq_band(converged_runs, rate_tolerance):
 
 
 def make_comparison_plot(accepted_rates, lower, upper, analytical_rate, out_path):
-    """The agentic-layer analogue of results/arrhenius.png: bounded
-    outcome despite varied path, shown visually -- the stronger Breen et al.
-    artifact, since a single clean run could be luck."""
+    """Plot each converged run's accepted rate against the Validator's band."""
     fig, ax = plt.subplots(figsize=(7, 5))
     run_indices = np.arange(1, len(accepted_rates) + 1)
-    ax.axhspan(lower, upper, color="tab:blue", alpha=0.15, label="Phase 2 total error band")
-    ax.axhline(analytical_rate, color="tab:red", linestyle="--", label="analytical rate")
+    ax.axhspan(lower, upper, color="tab:blue", alpha=0.15, label="Validator tolerance band")
+    ax.axhline(analytical_rate, color="tab:red", linestyle="--", label="exact chain rate")
     ax.scatter(run_indices, accepted_rates, color="tab:blue", zorder=3, label="accepted rate per run")
     ax.set_xlabel("converged run index")
     ax.set_ylabel("accepted relaxation rate (1/time)")
-    ax.set_title("Phase 3: accepted physics agrees despite divergent search paths")
+    ax.set_title("Phase 3: accepted rates per run")
     ax.legend(loc="best", fontsize=9)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
@@ -231,14 +173,14 @@ def main():
               "a real finding about the loop's reliability at these settings, not hidden.")
         return
 
-    accepted_rates, lower, upper, analytical_rate, all_inside = check_converged_rates_inside_uq_band(
+    accepted_rates, lower, upper, analytical_rate, all_inside = check_accepted_rates_inside_band(
         converged, rate_tolerance
     )
     make_comparison_plot(accepted_rates, lower, upper, analytical_rate,
                           "results/phase3_convergence_study.png")
 
     print(f"\n{'All' if all_inside else 'NOT all'} converged runs' accepted rates fall inside "
-          f"the Phase 2 total error band.")
+          f"the Validator's band.")
     print("Phase 3 convergence-robustness study complete.")
 
 

@@ -21,34 +21,18 @@ from agents.schemas import AgenticRun
 from agents.validator import REFERENCE_BETA, build_validator_agent, load_rate_tolerance
 from physics.simulate_0d import run_trajectory_0d
 
-DT = 0.01  # PROJECT_STATE.md Sec 4, Phase 1's own baseline
-# MUST match scripts.run_phase1_benchmark.N_STEPS (15,000,000), not a
-# smaller "good enough for a quick test" value: load_rate_tolerance()'s
-# statistical component (agents/validator.py) was measured on a
-# trajectory of exactly that length. A shorter trajectory here has
-# genuinely more statistical noise than that reused tolerance accounts
-# for -- reusing Phase 2's number is only valid for the trajectory size
-# it was calibrated against. Verified empirically while building this
-# module: a 1,500,000-step trajectory at seed=7 measured a rate ~6% off
-# analytical, outside the ~3.16% total tolerance, purely from the extra
-# sampling noise of the shorter trajectory -- not a physics finding.
+DT = 0.01  # same time step as Phase 1
+# Must equal scripts.run_phase1_benchmark.N_STEPS: the Validator's rate
+# tolerance is the replica spread of trajectories of exactly this length.
 N_STEPS = 15_000_000
-# [2026-07-12] Reference only -- NOT passed to SearchBounds/the Optimizer's
-# prompt anymore. Phase 1's converged lag at REFERENCE_BETA
-# (PROJECT_STATE.md Sec 9). Kept here purely so a human (or a post-hoc
-# analysis script) can compare what the real search actually found against
-# what Phase 1 already established -- handing it to the AGENT directly was
-# the design mistake the real convergence study exposed (see
-# agents/optimizer.py's module docstring for the full diagnosis).
-KNOWN_CONVERGED_LAGTIME_FOR_REFERENCE_ONLY = 20
 MAX_N_CLUSTERS = 100
 
 
 def build_reference_context(seed: int = 7):
     """
     Build the fixed pieces every real loop run needs: a reference
-    trajectory at REFERENCE_BETA, its search bounds, and Phase 2's
-    already-validated rate tolerance. Deliberately separated from
+    trajectory at REFERENCE_BETA, its search bounds, and the Validator's
+    rate tolerance. Deliberately separated from
     run_one_real_loop() below so a caller running MULTIPLE repetitions
     (scripts/run_phase3_agentic.py's convergence study) can build this
     ONCE and reuse the SAME trajectory across every repetition --

@@ -179,17 +179,17 @@ def run_trajectory(n_steps, seed, dt=0.005, gamma=1.0, beta=5.0, A=1.0, b=0.0,
       nearest minimum (at phi = +-1 exactly only when b=0).
     - A: barrier height of the untilted double well. Default 1.0.
     - b: tilt strength (see physics/potential.py's module docstring).
-      Default 0.0 (symmetric well). b != 0 makes one well deeper than
-      the other by a free-energy difference of ~2*b (see
-      physics/known_answers.py for the exact value).
+      Default 0.0 (symmetric well). b != 0 makes one minimum lower than
+      the other by about 2*b (physics/known_answers.py).
     - beta: inverse temperature, beta = 1/(k_B T). Default 5.0, i.e.
       kT = 0.2 and barrier/kT = 5 (switching between wells is rare but
       observable, per PROJECT_STATE.md Sec. 4).
     - eta(r, t): Gaussian white noise, delta-correlated in space and time
       (thermal fluctuations).
-    - sqrt(2*gamma/beta): the noise prefactor fixed by the
-      fluctuation-dissipation theorem -- NOT a free parameter, it is
-      always derived from gamma and beta.
+    - sqrt(2*gamma/beta): the noise prefactor. Because gamma multiplies
+      only the Laplacian, the prefactor consistent with the
+      fluctuation-dissipation theorem is sqrt(2/beta); the two agree only
+      at gamma=1, the only value used so far.
 
     Parameters
     ----------
@@ -240,7 +240,8 @@ def run_trajectory(n_steps, seed, dt=0.005, gamma=1.0, beta=5.0, A=1.0, b=0.0,
     initial_state = pde.ScalarField(grid, data=initial_phi)
 
     # The physical noise PREFACTOR (multiplying eta in the SDE above) is
-    # sqrt(2*gamma/beta), fixed by the fluctuation-dissipation theorem.
+    # sqrt(2*gamma/beta) (equal to the fluctuation-dissipation value
+    # sqrt(2/beta) at the default gamma=1; see run_trajectory's docstring).
     # py-pde's `noise=` argument expects the VARIANCE of the noise, not
     # this prefactor/amplitude, so we square it here: variance =
     # (sqrt(2*gamma/beta))**2 = 2*gamma/beta.

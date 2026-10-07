@@ -11,7 +11,7 @@ import numpy as np
 
 from agents.schemas import PipelineConfig
 from agents.tools import run_msm_pipeline
-from physics.known_answers import eyring_kramers_rate_0d
+from physics.known_answers import euler_maruyama_relaxation_rate_0d
 from physics.simulate_0d import run_trajectory_0d
 
 DT = 0.01
@@ -97,7 +97,7 @@ def test_run_msm_pipeline_can_overestimate_the_rate_at_a_too_short_lag():
     opposite side of the tolerance band.
     """
     config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=1)
-    analytical_rate = 2.0 * eyring_kramers_rate_0d(beta=5.0)
+    analytical_rate = euler_maruyama_relaxation_rate_0d(beta=5.0, dt=DT)
 
     result = run_msm_pipeline(config, _TRAJECTORY, DT)
 

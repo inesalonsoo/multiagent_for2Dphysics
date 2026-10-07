@@ -55,7 +55,7 @@ that bounds a sensible lag time (short lags bias the rate; long lags
 starve transition-count statistics) -- not the solved value -- so the
 Optimizer has to actually search, and a too-short lag proposal now gets
 rejected by the Validator on real physics grounds (a genuinely biased
-rate falling outside Phase 2's honest tolerance band), not a rigged one.
+rate falling outside the Validator's tolerance band), not a rigged one.
 
 [2026-07-12] VAMP-2 IS A SOFT GUIDE, NOT THE ACCEPTANCE CRITERION -- made
 explicit in the system prompt below, not left implicit. Before this, the
@@ -65,12 +65,9 @@ stated the more important fact: acceptance is decided entirely by the
 Validator's two hard physics gates (two_states_recovered,
 rate_matches_analytical), which are BLIND to VAMP-2 entirely. A config
 can have a great VAMP-2 score and still be rejected (wrong physics), or a
-middling one and still be accepted (right physics). The real convergence
-study showed the Optimizer already using VAMP-2 sensibly in practice
-(reasoning like "VAMP-2 declining while the rate stays flat as lag grows"
-to navigate between candidate lag times) -- this update makes that
-relationship a stated rule instead of something the model had to infer
-correctly on its own every time.
+middling one and still be accepted (right physics). VAMP-2 is only
+comparable between configs at the same lag time: it falls as the lag
+grows for any model.
 """
 
 import logging
@@ -96,10 +93,11 @@ Your job: given the history of configs tried so far and their real,
 measured results, propose the NEXT PipelineConfig to try.
 
 Two different things are in play, and they are NOT the same:
-- The cross-validated VAMP-2 score is a SOFT GUIDE for navigating between
-  candidate configs -- a higher score suggests a config captures the slow
-  dynamics better, and you may use it to judge which direction to try
-  next among configs that are otherwise physically plausible.
+- The cross-validated VAMP-2 score is a SOFT GUIDE for comparing configs
+  AT THE SAME LAG TIME: there, a higher score suggests the microstates
+  capture the slow dynamics better. Scores at different lag times are not
+  comparable: VAMP-2 falls as the lag grows for any model, so a lower
+  score at a longer lag is not evidence of a worse config.
 - Whether a config is ACCEPTED is decided entirely by two hard physics
   gates -- two_states_recovered and rate_matches_analytical -- computed
   independently in Python against known analytical physics, and reported
@@ -162,11 +160,11 @@ class SearchBounds:
             f"principles: too SHORT a lag means the microstate dynamics have not yet "
             f"lost memory of their sub-lag history, which biases the extracted rate; "
             f"too LONG a lag leaves too few independent lag-multiples in the "
-            f"trajectory for reliable transition-count statistics. A lag time for a "
-            f"system like this is typically a small integer, orders of magnitude "
-            f"below the trajectory length -- but the exact value is yours to find, "
-            f"and to revise based on what the Validator's feedback below tells you "
-            f"about your previous attempt.\n"
+            f"trajectory for reliable transition-count statistics. The short-lag "
+            f"bias shrinks slowly as the lag grows, so watch how the measured rate "
+            f"changes between lags. The exact value is yours to find, and to revise "
+            f"based on what the Validator's feedback below tells you about your "
+            f"previous attempt.\n"
             f"cluster_seed: any integer (only affects k-means initialization, not physics)."
         )
 

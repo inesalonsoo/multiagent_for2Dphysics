@@ -48,7 +48,7 @@ from deeptime.markov import TransitionCountEstimator
 from agents.schemas import PipelineConfig, PipelineResult
 from pipeline.cluster import cluster_trajectory
 from pipeline.features import compute_features
-from pipeline.msm import build_msm, recover_two_macrostates
+from pipeline.msm import build_msm, recover_two_macrostates, timescale_separation
 
 logger = logging.getLogger(__name__)
 
@@ -260,9 +260,8 @@ def run_msm_pipeline(config: PipelineConfig, trajectory: np.ndarray, dt: float) 
             n_visited_microstates=n_visited_microstates,
         )
 
-    # Same diagnostic Phase 1 uses (scripts/run_phase1_benchmark.py): PCCA+
-    # was ASKED for 2 macrostates, but only really recovered 2 if both
-    # labels are actually used in the microstate assignment.
+    # PCCA+ labels actually used. Informational only: PCCA+ returns as many
+    # sets as asked, so the Validator gates on timescale_separation instead.
     n_macrostates_recovered = int(len(np.unique(pcca_model.assignments)))
     macrostate_populations = (
         pcca_model.coarse_grained_stationary_probability.tolist()
@@ -275,6 +274,7 @@ def run_msm_pipeline(config: PipelineConfig, trajectory: np.ndarray, dt: float) 
         if n_macrostates_recovered == 2 else None
     )
     slowest_implied_timescale = float(msm.timescales()[0])
+    separation = float(timescale_separation(msm))
     relaxation_rate_mean = 1.0 / (slowest_implied_timescale * dt)
     vamp2_score = _cross_validated_vamp2_score(discrete_trajectory, config.msm_lagtime)
 
@@ -284,6 +284,7 @@ def run_msm_pipeline(config: PipelineConfig, trajectory: np.ndarray, dt: float) 
         macrostate_populations=macrostate_populations,
         macrostate_well_identity=macrostate_well_identity,
         slowest_implied_timescale=slowest_implied_timescale,
+        timescale_separation=separation,
         relaxation_rate_mean=relaxation_rate_mean,
         vamp2_score=vamp2_score,
         trajectory_length_frames=trajectory_length_frames,

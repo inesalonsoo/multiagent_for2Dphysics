@@ -98,6 +98,11 @@ class PipelineResult(ContractModel):
                     "to WHICH well, which this field, not the raw PCCA+ label, provides.",
     )
     slowest_implied_timescale: Optional[float] = None
+    timescale_separation: Optional[float] = Field(
+        default=None,
+        description="t_2 / t_3, the evidence for two metastable states "
+                    "(pipeline.msm.timescale_separation).",
+    )
     relaxation_rate_mean: Optional[float] = None
     vamp2_score: Optional[float] = Field(
         default=None,
@@ -138,26 +143,19 @@ class ValidatorDecision(ContractModel):
     caller is expected to set every hard check to False and is_ill_posed
     to True -- a failed run can never be mechanically accepted.
 
-    DORMANT, NOT DELETED: there is deliberately no boltzmann_ratio_matches_
-    analytical field here. For Phase 3's symmetric (b=0) reference
-    trajectory, known_answers.boltzmann_population_ratio() is trivially
-    ~1 -- a non-discriminating check, not a useful gate. Phase 4 runs the
-    same pipeline on a TILTED potential, where that ratio becomes the
-    PRIMARY discriminating known-answer (population imbalance =
-    exp(-beta*deltaF), see PROJECT_STATE.md Sec 3). Reactivate this field
-    when building Phase 4's agentic deployment -- do not let a tilted run
-    silently proceed without its most important physics check just
-    because it was dropped here for an unrelated reason three phases
-    earlier. See PROJECT_STATE.md Sec 9 (module 3.1 entry) for this same
-    marker.
+    There is no population-ratio check yet: at Phase 3's symmetric (b=0)
+    reference the expected ratio is 1, so it would not discriminate. A
+    tilted (b != 0) deployment should add one, checked against
+    known_answers.boltzmann_population_ratio().
     """
 
     two_states_recovered: bool = Field(
-        description="known_answers.expected_number_of_states() == 2 macrostates recovered."
+        description="Two metastable states: timescale_separation above "
+                    "pipeline.msm.MIN_TIMESCALE_SEPARATION."
     )
     rate_matches_analytical: bool = Field(
-        description="Measured relaxation rate within tolerance of 2*known_answers."
-                    "eyring_kramers_rate_0d() at the loop's fixed reference beta."
+        description="Measured relaxation rate within tolerance of the exact chain rate "
+                    "(known_answers.euler_maruyama_relaxation_rate_0d) at the reference beta."
     )
     is_ill_posed: bool = Field(
         description="True if the config itself was degenerate (lag >= trajectory length, "

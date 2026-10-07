@@ -19,12 +19,9 @@ tilt that breaks the symmetry between the two wells.
   stacking domains (which this project's benchmark ultimately targets)
   physically interesting, so this also folds the Phase-4 "moire tilt"
   idea into the core physics rather than treating it as a separate demo.
-- The tilt shifts the well POSITIONS slightly too (they are no longer
-  exactly at phi = +-1) -- see physics/known_answers.py for the exact
-  (numerically root-found) well positions and the free-energy difference
-  between them, which is NOT simply b (2*b, however, turns out to be an
-  extremely good approximation to that free-energy difference for modest
-  tilts -- again see known_answers.py).
+- The tilt also shifts the well positions slightly away from phi = +-1.
+  physics/known_answers.py gives the exact positions and the energy
+  difference between the minima (about 2*b for modest tilts).
 
 The derivative dV/dphi is the force (well, minus the force) that drives
 the deterministic part of the Allen-Cahn dynamics: phi is pushed

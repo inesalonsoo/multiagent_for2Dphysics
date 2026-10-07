@@ -1,21 +1,15 @@
 """
-Bayesian uncertainty quantification for the MSM relaxation rate, using
-deeptime.markov.msm.BayesianMSM. Phase 2 module: turns Phase 1's
-point-estimate log(rate) vs beta line into a plot where every point
-carries a credible interval, checked against the analytical
-Eyring-Kramers prediction from physics/known_answers.py.
+Bayesian credible interval for the MSM relaxation rate, using
+deeptime.markov.msm.BayesianMSM with count_mode="effective", the mode
+deeptime recommends for Bayesian MSMs.
 
-COUNT MODE -- read this before changing "effective" below.
-pipeline.msm.build_msm() (Phase 1's point estimate) uses count_mode=
-"sliding": every overlapping window of the trajectory counts as a
-transition, which uses the data efficiently but makes the counts
-statistically CORRELATED and too large by a factor of the lag time.
-deeptime's own docs are explicit that this gives WRONG (overconfident)
-uncertainty estimates, and that BayesianMSM should instead be fit with
-count_mode="effective" (an estimate of the statistically UNCORRELATED
-transition counts). This module therefore builds its own count model
-with "effective" counting rather than reusing pipeline.msm.build_msm's
-"sliding" one -- the two are deliberately different, not an oversight.
+Known limitation, measured in scripts/run_phase2_uq.py: for this system
+the "effective" counts are only about 20% below the overlapping "sliding"
+counts, although those are correlated over a whole lag time. The posterior
+therefore acts as if it had about a million independent transitions, and
+its intervals are 11-190 times narrower than the real replica-to-replica
+spread (2 of 42 intervals contain the exact rate). The project's
+uncertainty is the replica spread, not these intervals.
 """
 
 from deeptime.markov import TransitionCountEstimator

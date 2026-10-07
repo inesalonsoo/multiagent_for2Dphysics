@@ -1,139 +1,118 @@
 """
-Known-answer tests for pipeline/msm.py.
+Known-answer tests for pipeline/msm.py, on real 0-D trajectories.
 
-Uses a real 0-D trajectory (physics.simulate_0d) long enough to show
-several barrier crossings at the project's baseline beta=5.0, so these
-checks are grounded in actual bistable dynamics, not synthetic data.
+The shared beta=5 trajectory (1.5M steps of dt=0.01) spans about 170
+slowest timescales, enough to resolve the barrier-crossing process.
 """
 
 import numpy as np
 
 from physics.simulate_0d import run_trajectory_0d
-from physics.known_answers import expected_number_of_states, boltzmann_population_ratio
+from physics.known_answers import euler_maruyama_relaxation_rate_0d
 from pipeline.features import compute_features
 from pipeline.cluster import cluster_trajectory
 from pipeline.msm import (
-    build_msm, implied_timescales, recover_two_macrostates, find_converged_lagtime,
+    build_msm, implied_timescales, choose_lagtime, chapman_kolmogorov_error,
+    timescale_separation, recover_two_macrostates,
 )
 
-# Shared trajectory for all tests in this file. beta=5.0, dt=0.01,
-# 1.5M steps -> total time 15000, giving ~85 COMMITTED crossings (checked
-# with a +-0.5 hysteresis band, not a naive x=0 sign change, which
-# overcounts barrier-grazing noise as "crossings"). This matters: an
-# earlier, shorter 250k-step version of this trajectory had only 12
-# committed crossings and showed a genuine (not a bug -- confirmed against
-# the raw trajectory itself) 20/80 population split purely from finite-
-# sample noise, since a handful of exponential-ish dwell times can easily
-# sum unevenly. ~85 crossings brings the two-well population estimate
-# within a few percent of the true 50/50 (see test below for the reasoning
-# behind its tolerance).
-_TRAJECTORY = run_trajectory_0d(n_steps=1_500_000, seed=7, beta=5.0, dt=0.01)
-_FEATURES = compute_features(_TRAJECTORY)
-_DISCRETE_TRAJECTORY, _ = cluster_trajectory(_FEATURES, n_clusters=50, seed=42)
+DT = 0.01
+
+
+def _discrete_trajectory(beta, n_steps, seed, b=0.0):
+    """Simulate a 0-D trajectory and cluster it into 50 microstates."""
+    trajectory = run_trajectory_0d(n_steps=n_steps, seed=seed, beta=beta, dt=DT, b=b)
+    features = compute_features(trajectory)
+    discrete_trajectory, _ = cluster_trajectory(features, n_clusters=50, seed=42)
+    return discrete_trajectory
+
+
+_DISCRETE_TRAJECTORY = _discrete_trajectory(beta=5.0, n_steps=1_500_000, seed=7)
 
 
 def test_build_msm_returns_valid_model():
     """The fitted MSM's state count must not exceed the number of microstates."""
     msm = build_msm(_DISCRETE_TRAJECTORY, lagtime=10)
 
-    assert msm.n_states <= 50
-    assert msm.n_states > 1
+    assert 1 < msm.n_states <= 50
 
 
-def test_implied_timescales_are_positive_and_correct_length():
-    """implied_timescales() must return one positive value per lag time."""
-    lagtimes = [1, 5, 10, 20]
-
-    timescales = implied_timescales(_DISCRETE_TRAJECTORY, lagtimes)
-
-    assert timescales.shape == (len(lagtimes),)
-    assert np.all(timescales > 0)
-
-
-def test_implied_timescale_plateaus_at_larger_lag_times():
+def test_implied_timescales_increase_with_lag():
     """
-    The slowest implied timescale should stabilize (stop changing much)
-    once the lag time is long enough for the microstate dynamics to be
-    Markovian -- the classic ITS plateau. Tolerance is TIGHT (3%, not a
-    loose round number): a loose tolerance can call a curve that is
-    still visibly climbing "converged" (see find_converged_lagtime's
-    docstring and PROJECT_STATE.md Sec 10 for a case -- beta=7 at lag 20
-    -- where a 25% tolerance would have wrongly accepted a +12.84% step).
-    At this trajectory's beta=5, lag=20->40 is independently known (same
-    PROJECT_STATE.md section) to change by +1.92%, comfortably under 3%.
+    Variational principle: an MSM underestimates the slowest timescale at
+    short lags and approaches the true value from below as the lag grows.
     """
-    lag_20_timescale = implied_timescales(_DISCRETE_TRAJECTORY, [20])[0]
-    lag_40_timescale = implied_timescales(_DISCRETE_TRAJECTORY, [40])[0]
+    timescales = implied_timescales(_DISCRETE_TRAJECTORY, [10, 100, 500])
 
-    relative_change = abs(lag_40_timescale - lag_20_timescale) / lag_20_timescale
-    assert relative_change < 0.03
+    assert timescales[0] < timescales[1] < timescales[2]
 
 
-def test_find_converged_lagtime_matches_known_plateau_shape():
+def test_chosen_lag_is_a_tenth_of_slowest_timescale():
+    """choose_lagtime() must return a lag self-consistent with its own rule."""
+    lagtime = choose_lagtime(_DISCRETE_TRAJECTORY)
+    slowest_timescale = implied_timescales(_DISCRETE_TRAJECTORY, [lagtime])[0]
+
+    assert abs(lagtime / (0.1 * slowest_timescale) - 1.0) < 0.1
+
+
+def test_rate_at_chosen_lag_matches_exact_chain_rate():
     """
-    At beta=5 with a 3% tolerance, the ITS plateau is independently known
-    (PROJECT_STATE.md Sec 10's convergence scan) to first satisfy the
-    criterion at lag=20 (the 20->40 step is +1.92%, under 3%; the 10->20
-    step is +5.33%, over). find_converged_lagtime() should reproduce this
-    exactly on this trajectory, not just return "some" plausible lag.
+    At beta=3, a 1.5M-step trajectory spans about 1200 slowest timescales,
+    so the rate's statistical error is about 3%. At the chosen lag the MSM
+    rate must match the exact rate of the simulated Euler-Maruyama chain
+    within 6% (two standard errors).
     """
-    candidate_lags = [10, 20, 40, 80]
+    discrete_trajectory = _discrete_trajectory(beta=3.0, n_steps=1_500_000, seed=11)
+    lagtime = choose_lagtime(discrete_trajectory)
+    slowest_timescale = build_msm(discrete_trajectory, lagtime).timescales()[0]
 
-    converged_lag, timescales = find_converged_lagtime(
-        _DISCRETE_TRAJECTORY, candidate_lags, plateau_tolerance=0.03,
-    )
+    measured_rate = 1.0 / (slowest_timescale * DT)
+    exact_chain_rate = euler_maruyama_relaxation_rate_0d(beta=3.0, dt=DT)
 
-    assert converged_lag == 20
-    assert len(timescales) == len(candidate_lags)
+    assert abs(measured_rate / exact_chain_rate - 1.0) < 0.06
 
 
-def test_find_converged_lagtime_returns_none_when_data_is_insufficient():
+def test_choose_lagtime_refuses_unresolvable_trajectory():
     """
-    A short, sparsely-sampled trajectory at a high beta (few crossings)
-    should NOT show a genuine plateau within a modest candidate lag
-    range -- find_converged_lagtime must honestly report this (None),
-    not silently pick the largest lag and pretend it converged.
+    At beta=9 the slowest timescale is about 480,000 frames, so a
+    200,000-frame trajectory cannot resolve it. The function must say so
+    (None) instead of returning a lag.
     """
-    short_trajectory = run_trajectory_0d(n_steps=200_000, seed=3, beta=9.0, dt=0.01)
-    features = compute_features(short_trajectory)
-    discrete_trajectory, _ = cluster_trajectory(features, n_clusters=50, seed=42)
+    discrete_trajectory = _discrete_trajectory(beta=9.0, n_steps=200_000, seed=3)
 
-    converged_lag, _ = find_converged_lagtime(
-        discrete_trajectory, [10, 20, 40, 80], plateau_tolerance=0.03,
-    )
-
-    assert converged_lag is None
+    assert choose_lagtime(discrete_trajectory) is None
 
 
-def test_recovers_exactly_two_macrostates():
+def test_chapman_kolmogorov_error_is_small_at_chosen_lag():
+    """A Markovian model predicts its own longer-lag estimates (gap < 0.05)."""
+    lagtime = choose_lagtime(_DISCRETE_TRAJECTORY)
+
+    assert chapman_kolmogorov_error(_DISCRETE_TRAJECTORY, lagtime) < 0.05
+
+
+def test_timescale_separation_distinguishes_double_from_single_well():
     """
-    PCCA+ coarse-graining must partition the 50 microstates into exactly
-    2 macrostates, matching physics.known_answers.expected_number_of_states().
+    The double well has one slow process, so t_2 / t_3 is large. Tilting
+    with b=3 (beyond the spinodal, about 1.54) leaves a single well with no
+    slow process, so the ratio must be small. PCCA+ would still report
+    2 sets for the single well; this check does not.
     """
-    _, pcca_model = recover_two_macrostates(_DISCRETE_TRAJECTORY, lagtime=20)
+    double_well_msm = build_msm(_DISCRETE_TRAJECTORY, choose_lagtime(_DISCRETE_TRAJECTORY))
+    single_well_trajectory = _discrete_trajectory(beta=5.0, n_steps=1_500_000, seed=7, b=3.0)
+    single_well_msm = build_msm(single_well_trajectory, lagtime=10)
 
-    unique_macrostates = np.unique(pcca_model.assignments)
+    assert timescale_separation(double_well_msm) > 10.0
+    assert timescale_separation(single_well_msm) < 2.0
 
-    assert len(unique_macrostates) == expected_number_of_states()
 
-
-def test_macrostate_populations_match_symmetric_boltzmann_ratio():
+def test_macrostate_populations_are_symmetric():
     """
-    For the symmetric (b=0) potential used to generate this trajectory,
-    physics.known_answers.boltzmann_population_ratio() predicts exactly
-    equal populations (ratio 1). The MSM's recovered coarse-grained
-    stationary populations should be close to 50/50, within the
-    statistical noise of a finite trajectory: with ~85 committed
-    crossings (~42 dwell periods per well), the relative fluctuation in
-    cumulative dwell time is roughly 1/sqrt(42) =~ 15%, so a 0.15
-    absolute tolerance on the population difference is generous but
-    principled, not an arbitrary round number.
+    For b=0 the two wells hold equal populations. The trajectory has about
+    85 crossings, so the population difference fluctuates by roughly
+    1/sqrt(42), about 15%; 0.15 is the tolerance.
     """
     _, pcca_model = recover_two_macrostates(_DISCRETE_TRAJECTORY, lagtime=20)
     populations = pcca_model.coarse_grained_stationary_probability
 
-    predicted_ratio = boltzmann_population_ratio(beta=5.0, A=1.0, b=0.0)
-
-    assert abs(predicted_ratio - 1.0) < 1e-8  # sanity on the known answer itself
     assert abs(populations.sum() - 1.0) < 1e-6
     assert abs(populations[0] - populations[1]) < 0.15

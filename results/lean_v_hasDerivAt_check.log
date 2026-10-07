@@ -1,6 +1,6 @@
 Independent check of lean/Oracle/Potential.lean (V_hasDerivAt proof from Lemma)
-Date: 2026-09-26T15:42Z
-File checked: lean/Oracle/Potential.lean, git blob a5c5b3e0909b7dc55c37c281ecf26bc8be7ebd20
+Date: 2026-10-06T20:14Z
+File checked: lean/Oracle/Potential.lean, git blob d2af86c5e75980acdfeabf165b879b1c77c2c2b4
 Toolchain (lean/lean-toolchain): leanprover/lean4:v4.33.0-rc1
 Lean: Lean (version 4.33.0-rc1, x86_64-w64-windows-gnu, commit 62eed1db4d67327ec8120be05f1a1b0847d74561, Release)
 Mathlib rev (lean/lake-manifest.json, checked out): 9d302fc708aa85d820df824fccefbb90d9b3e567
@@ -14,11 +14,11 @@ unproved theorems; V_hasDerivAt and potential_even_at_b0 depend only on
 sorryAx (a positive control showing the check detects a placeholder).
 
 === Output (scratch path prefix trimmed) ===
-PotentialCheck.lean:102:8: warning: declaration uses `sorry`
-PotentialCheck.lean:110:8: warning: declaration uses `sorry`
-PotentialCheck.lean:116:8: warning: declaration uses `sorry`
-PotentialCheck.lean:123:8: warning: declaration uses `sorry`
-PotentialCheck.lean:129:8: warning: declaration uses `sorry`
+PotentialCheck.lean:101:8: warning: declaration uses `sorry`
+PotentialCheck.lean:108:8: warning: declaration uses `sorry`
+PotentialCheck.lean:115:8: warning: declaration uses `sorry`
+PotentialCheck.lean:122:8: warning: declaration uses `sorry`
+PotentialCheck.lean:127:8: warning: declaration uses `sorry`
 'Oracle.Potential.V_hasDerivAt' depends on axioms: [propext, Classical.choice, Quot.sound]
 'Oracle.Potential.V'_hasDerivAt' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]
 'Oracle.Potential.critical_points_b0' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound]

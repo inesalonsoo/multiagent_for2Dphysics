@@ -53,13 +53,12 @@ namespace Oracle.Potential
 `physics/potential.py::potential`: `V(x) = A*(x^2-1)^2 + b*x`. -/
 noncomputable def V (A b x : ℝ) : ℝ := A * (x ^ 2 - 1) ^ 2 + b * x
 
-/-- `dV/dx`, matching `physics/potential.py::potential_derivative` and
-`known_answers.py`'s reliance on it (e.g. `find_well_positions`, lines 137-138):
+/-- `dV/dx`, matching `physics/potential.py::potential_derivative`:
 `V'(x) = 4*A*x*(x^2-1) + b`. -/
 noncomputable def V' (A b x : ℝ) : ℝ := 4 * A * x * (x ^ 2 - 1) + b
 
-/-- `V'` really is the derivative of `V`, for any tilt `b`.
-Anchors `physics/potential.py:70-101` (`potential_derivative`) as a whole. -/
+/-- `V'` really is the derivative of `V`, for any tilt `b`. Anchors
+`physics/potential.py::potential_derivative`. -/
 theorem V_hasDerivAt (A b x : ℝ) : HasDerivAt (V A b) (V' A b x) x := by
   -- Restate the goal with `V A b` unfolded to its lambda. `show` accepts
   -- any definitionally equal goal, and `V` is an ordinary `def`, so this
@@ -97,42 +96,39 @@ theorem V_hasDerivAt (A b x : ℝ) : HasDerivAt (V A b) (V' A b x) x := by
   exact hsum
 
 /-- `12*A*x^2 - 4*A` really is the derivative of `V'`, i.e. the second
-derivative of `V`. Anchors `known_answers.py:57-58`, the docstring's stated
-formula `V''(x) = 12*A*x**2 - 4*A`. -/
+derivative of `V`. Anchors the formula `V''(x) = 12*A*x**2 - 4*A` in
+`known_answers.eyring_kramers_rate_0d`'s docstring. -/
 theorem V'_hasDerivAt (A b x : ℝ) : HasDerivAt (V' A b) (12 * A * x ^ 2 - 4 * A) x := by
   sorry
 
-/-- At b=0 and A != 0, the stationary points of `V` are exactly the two
-wells and the saddle: x = -1, 0, 1. A corollary of `V_hasDerivAt`, not an
-independently restated fact. Anchors `known_answers.py:110-142`
-(`find_well_positions`'s b=0 case: wells at exactly +-1; the saddle at 0 is
-the barrier point of `eyring_kramers_rate_0d`'s docstring, line 60). -/
+/-- At b=0 and A != 0, the stationary points of `V` are exactly x = -1, 0, 1
+(two wells and the saddle when A > 0). Intended as a corollary of
+`V_hasDerivAt`. Anchors `known_answers.find_well_positions` (wells at +-1
+for b=0). -/
 theorem critical_points_b0 (A x : ℝ) (hA : A ≠ 0) :
     deriv (V A 0) x = 0 ↔ x = -1 ∨ x = 0 ∨ x = 1 := by
   sorry
 
-/-- Curvature at both wells is exactly 8A. A corollary of `V'_hasDerivAt`.
-Anchors `known_answers.py:59,101` (`curvature_at_well = 8.0 * A`). -/
+/-- The derivative of `V'` at both wells is 8A. Together with `V_hasDerivAt`
+this is V''(+-1) = 8A. Anchors `curvature_at_well = 8.0 * A` in
+`known_answers.eyring_kramers_rate_0d`. -/
 theorem curvature_at_wells (A : ℝ) :
     deriv (V' A 0) 1 = 8 * A ∧ deriv (V' A 0) (-1) = 8 * A := by
   sorry
 
-/-- Curvature at the saddle is exactly -4A. A corollary of `V'_hasDerivAt`.
-Anchors `known_answers.py:60,102` (`curvature_at_barrier = 4.0 * A`, used as
-`|V''(0)|`). -/
+/-- The derivative of `V'` at the saddle is -4A, i.e. V''(0) = -4A.
+Anchors `curvature_at_barrier = 4.0 * A` (used as |V''(0)|) in
+`known_answers.eyring_kramers_rate_0d`. -/
 theorem curvature_at_saddle (A : ℝ) : deriv (V' A 0) 0 = -4 * A := by
   sorry
 
 /-- The barrier (at x=0) sits exactly A above the well at x=1. Pure algebra
-on `V`'s definition, no derivative involved. Anchors `known_answers.py:41-47,
-63,103` (`barrier_height()`, `delta_V = A`). -/
+on `V`'s definition. Anchors `known_answers.barrier_height`. -/
 theorem barrier_height_eq (A : ℝ) : V A 0 0 - V A 0 1 = A := by
   sorry
 
 /-- At b=0, `V` is an even function of x. Pure algebra on `V`'s definition.
-Anchors `known_answers.py:145-168` (`free_energy_difference`'s docstring:
-"For the symmetric potential (b=0), this is exactly zero by the x -> -x
-symmetry of V."). -/
+Anchors `known_answers.energy_difference_of_minima` (exactly 0 for b=0). -/
 theorem potential_even_at_b0 (A x : ℝ) : V A 0 x = V A 0 (-x) := by
   rw [V, V, neg_sq, zero_mul, zero_mul]
 

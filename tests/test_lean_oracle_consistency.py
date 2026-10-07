@@ -1,161 +1,93 @@
 """
-Consistency checks between physics/known_answers.py and the Lean oracle in
-lean/Oracle/Potential.lean.
+Consistency checks between the Lean oracle (lean/Oracle/Potential.lean) and
+the Python code. These tests read the .lean file itself:
+- the Lean definitions of V and V' evaluate to the same numbers as
+  physics/potential.py;
+- the 7 theorem statements are exactly the expected ones, so a statement
+  cannot be weakened unnoticed;
+- the constants the theorems state (wells at +-1, curvatures 8A and -4A,
+  barrier height A) agree with the Python potential.
 
-Two independent-lifecycle groups of tests live here:
-
-- Group A (below, always runs): pins the numbers physics/known_answers.py
-  computes against values recomputed independently in this test file, using
-  the SAME formulas the Lean theorems state. This does not require Lean or
-  ax-prover to have run at all -- it already catches a change to one of
-  known_answers.py's hardcoded constants (8.0, 4.0, etc.) today. Comparing a
-  literal to the same literal restated a second time would prove nothing, so
-  every assertion here extracts its "actual" value from a real function call.
-
-- Group B (skips until the Lean side has actually been run): checks that
-  every theorem in lean/Oracle/Potential.lean has been discharged by
-  ax-prover (see PROJECT_STATE.md for the exact command), by reading the
-  archived results/lean_oracle_prove_output.json, AND independently that no
-  `sorry` remains in the .lean source -- a JSON can report one theorem as
-  proven while a different theorem in the same file is still unproven.
+Whether the theorems are proved is answered by Lean itself (`#print axioms`,
+results/lean_v_hasDerivAt_check.log), not by these tests.
 """
 
-import json
+import re
 from pathlib import Path
 
-import numpy as np
-import pytest
-
-from physics.known_answers import (
-    eyring_kramers_rate_0d,
-    find_well_positions,
-    free_energy_difference,
-)
-from physics.potential import potential_derivative
+from physics.known_answers import barrier_height, find_well_positions
+from physics.potential import potential, potential_derivative
 
 LEAN_SOURCE = Path("lean/Oracle/Potential.lean")
-PROVE_OUTPUT = Path("results/lean_oracle_prove_output.json")
-
-EXPECTED_THEOREMS = [
-    "Oracle.Potential:V_hasDerivAt",
-    "Oracle.Potential:V'_hasDerivAt",
-    "Oracle.Potential:critical_points_b0",
-    "Oracle.Potential:curvature_at_wells",
-    "Oracle.Potential:curvature_at_saddle",
-    "Oracle.Potential:barrier_height_eq",
-    "Oracle.Potential:potential_even_at_b0",
+SAMPLE_POINTS = [(1.0, 0.0, 0.5), (1.0, 0.0, -1.3), (2.0, 0.1, 0.0), (0.5, -0.2, 2.0)]
+EXPECTED_STATEMENTS = [
+    "theorem V_hasDerivAt (A b x : ℝ) : HasDerivAt (V A b) (V' A b x) x",
+    "theorem V'_hasDerivAt (A b x : ℝ) : HasDerivAt (V' A b) (12 * A * x ^ 2 - 4 * A) x",
+    "theorem critical_points_b0 (A x : ℝ) (hA : A ≠ 0) :\n"
+    "    deriv (V A 0) x = 0 ↔ x = -1 ∨ x = 0 ∨ x = 1",
+    "theorem curvature_at_wells (A : ℝ) :\n"
+    "    deriv (V' A 0) 1 = 8 * A ∧ deriv (V' A 0) (-1) = 8 * A",
+    "theorem curvature_at_saddle (A : ℝ) : deriv (V' A 0) 0 = -4 * A",
+    "theorem barrier_height_eq (A : ℝ) : V A 0 0 - V A 0 1 = A",
+    "theorem potential_even_at_b0 (A x : ℝ) : V A 0 x = V A 0 (-x)",
 ]
 
-TOLERANCE = 1e-10
+
+def _lean_text():
+    """The .lean source with normalized line endings."""
+    return LEAN_SOURCE.read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
-# --- Group A: runs today, never skips -------------------------------------
-
-
-def test_rate_prefactor_matches_curvature_formula():
+def _lean_definition_as_python(name):
     """
-    eyring_kramers_rate_0d(beta, A) internally hardcodes
-    curvature_at_well=8*A and curvature_at_barrier=4*A (known_answers.py
-    lines 101-102) inside its prefactor sqrt(8A*4A)/(2*pi). We recover that
-    prefactor from the function's OUTPUT (by dividing out the exp(-beta*A)
-    exponential factor) and compare it against the same closed-form
-    sqrt(8A*4A)/(2*pi) computed independently here. This is exactly what
-    Lean's curvature_at_wells/curvature_at_saddle theorems state as
-    consequences of V'_hasDerivAt -- if someone edits the 8.0 or 4.0 inside
-    known_answers.py, this recovered prefactor changes and the test fails,
-    unlike a literal-vs-literal comparison which would not notice.
+    The right-hand side of `noncomputable def <name> (A b x : ℝ) : ℝ := ...`
+    as a Python expression (Lean's ^ becomes **).
     """
-    for beta, barrier_height_value in [(5.0, 1.0), (3.0, 2.0)]:
-        rate = eyring_kramers_rate_0d(beta=beta, A=barrier_height_value)
-        recovered_prefactor = rate * np.exp(beta * barrier_height_value)
-
-        curvature_at_well = 8.0 * barrier_height_value
-        curvature_at_barrier = 4.0 * barrier_height_value
-        expected_prefactor = np.sqrt(curvature_at_well * curvature_at_barrier) / (2.0 * np.pi)
-
-        assert abs(recovered_prefactor - expected_prefactor) < TOLERANCE
+    pattern = rf"noncomputable def {re.escape(name)} \(A b x : ℝ\) : ℝ := (.+)"
+    match = re.search(pattern, _lean_text())
+    assert match, f"definition of {name} not found in {LEAN_SOURCE}"
+    return match.group(1).strip().replace("^", "**")
 
 
-def test_potential_derivative_matches_formula_at_sample_points():
+def test_lean_definitions_match_python_potential():
+    """Lean's V and V' must give the same numbers as physics/potential.py."""
+    v_expression = _lean_definition_as_python("V")
+    v_prime_expression = _lean_definition_as_python("V'")
+
+    for barrier, tilt, x in SAMPLE_POINTS:
+        variables = {"A": barrier, "b": tilt, "x": x}
+        lean_v = eval(v_expression, {}, variables)
+        lean_v_prime = eval(v_prime_expression, {}, variables)
+
+        assert abs(lean_v - potential(x, A=barrier, b=tilt)) < 1e-10
+        assert abs(lean_v_prime - potential_derivative(x, A=barrier, b=tilt)) < 1e-10
+
+
+def test_lean_theorem_statements_are_unchanged():
+    """The file must contain exactly the 7 expected statements, word for word."""
+    text = _lean_text()
+
+    for statement in EXPECTED_STATEMENTS:
+        assert statement + " := by" in text, f"changed or missing: {statement.splitlines()[0]}"
+    assert text.count("\ntheorem ") == len(EXPECTED_STATEMENTS)
+
+
+def test_stated_constants_match_python_potential():
     """
-    Recomputes 4*A*x*(x**2-1)+b independently at several (A, b, x) sample
-    points and compares against potential_derivative()'s actual output --
-    this is the same formula Lean's V_hasDerivAt fixes as dV/dx.
+    The values the theorems state, checked on the Python side: wells at
+    +-1, V'' = 8A at the wells and -4A at the saddle (by central finite
+    difference of physics.potential), and barrier height A.
     """
-    sample_points = [
-        (1.0, 0.0, 0.5),
-        (1.0, 0.0, -1.3),
-        (2.0, 0.1, 0.0),
-        (0.5, -0.2, 2.0),
-    ]
-    for barrier_height_value, tilt, x in sample_points:
-        expected_slope = 4 * barrier_height_value * x * (x**2 - 1) + tilt
-        actual_slope = potential_derivative(x, A=barrier_height_value, b=tilt)
+    barrier = 1.0
+    step = 1e-4
 
-        assert abs(actual_slope - expected_slope) < TOLERANCE
+    def second_derivative(x):
+        return (potential(x + step, A=barrier) - 2.0 * potential(x, A=barrier)
+                + potential(x - step, A=barrier)) / step**2
 
-
-def test_symmetric_wells_and_zero_free_energy():
-    """
-    At b=0, find_well_positions must recover exactly (-1, 1) and
-    free_energy_difference must be exactly 0 -- the same claims Lean's
-    critical_points_b0 and potential_even_at_b0 theorems state.
-    """
-    x_minus, x_plus = find_well_positions(A=1.0, b=0.0)
-    assert abs(x_minus - (-1.0)) < TOLERANCE
-    assert abs(x_plus - 1.0) < TOLERANCE
-
-    delta_F = free_energy_difference(A=1.0, b=0.0)
-    assert abs(delta_F) < TOLERANCE
-
-
-# --- Group B: skips until ax-prover has actually discharged the proofs ----
-
-
-def test_all_lean_theorems_proven():
-    """
-    Checks results/lean_oracle_prove_output.json (the archived ax-prover CLI
-    output) reports success for every theorem in EXPECTED_THEOREMS. Skips
-    with the exact command to run if that file doesn't exist yet -- this is
-    a deliberate pending step (see PROJECT_STATE.md), not a silently passing
-    check.
-    """
-    if not PROVE_OUTPUT.exists():
-        pytest.skip(
-            f"Lean oracle not proven yet -- run: cd lean && lake exe cache get "
-            f"&& lake build && ax-prover prove Oracle.Potential --folder . "
-            f"-o ../{PROVE_OUTPUT}"
-        )
-
-    prove_results = json.loads(PROVE_OUTPUT.read_text(encoding="utf-8"))
-
-    for theorem_key in EXPECTED_THEOREMS:
-        assert theorem_key in prove_results, f"missing prover output for {theorem_key}"
-        assert prove_results[theorem_key]["success"] is True, (
-            f"{theorem_key} was not proven: {prove_results[theorem_key].get('error')}"
-        )
-        assert prove_results[theorem_key]["error"] is None
-
-
-def test_lean_source_has_no_remaining_sorry():
-    """
-    Independent check from test_all_lean_theorems_proven: a JSON can report
-    one theorem as successfully proven while a DIFFERENT theorem in the same
-    file is still unproven, so we also directly scan the .lean source for
-    any remaining `sorry`. Gated on the SAME "has ax-prover actually been
-    run" signal as test_all_lean_theorems_proven (PROVE_OUTPUT existing),
-    not on LEAN_SOURCE existing -- the scaffolded file with its `sorry`
-    placeholders exists from the moment this module is written, long before
-    anyone has attempted a proof.
-    """
-    if not PROVE_OUTPUT.exists():
-        pytest.skip(
-            f"Lean oracle not proven yet -- run: cd lean && lake exe cache get "
-            f"&& lake build && ax-prover prove Oracle.Potential --folder . "
-            f"-o ../{PROVE_OUTPUT}"
-        )
-
-    lean_source_text = LEAN_SOURCE.read_text(encoding="utf-8")
-    assert "sorry" not in lean_source_text, (
-        f"{LEAN_SOURCE} still contains 'sorry' -- proofs incomplete"
-    )
+    x_minus, x_plus = find_well_positions(A=barrier, b=0.0)
+    assert abs(x_minus + 1.0) < 1e-10 and abs(x_plus - 1.0) < 1e-10
+    assert abs(second_derivative(1.0) - 8.0 * barrier) < 1e-5
+    assert abs(second_derivative(-1.0) - 8.0 * barrier) < 1e-5
+    assert abs(second_derivative(0.0) - (-4.0 * barrier)) < 1e-5
+    assert abs(potential(0.0, A=barrier) - potential(1.0, A=barrier) - barrier_height(A=barrier)) < 1e-12

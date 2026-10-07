@@ -4,7 +4,7 @@ Can an AI agent be trusted to set up a scientific analysis? This project
 tests that on a problem whose answer is known exactly, so every result can
 be checked.
 
-## The idea in one minute
+## The idea 
 
 Picture a ball in a landscape with two valleys, constantly shaken by heat.
 Most of the time it rattles around inside one valley; now and then a strong

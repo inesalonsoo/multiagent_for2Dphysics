@@ -1,4 +1,4 @@
-<title>Verified Agentic Loop — Presentation Deck</title>
+<title>Agentic MSM Loop</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root {
@@ -183,9 +183,6 @@
     color: var(--ink-soft); z-index: 20; letter-spacing: .04em;
   }
 
-  .ruler-wrap { margin-top: 10px; }
-  .ruler-legend { display: flex; gap: 22px; margin-top: 10px; flex-wrap: wrap; font-size: .78rem; color: var(--ink-soft); }
-  .ruler-legend span { display: inline-flex; align-items: center; gap: 6px; }
   .swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
 
   .col-head { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 10px; }
@@ -204,8 +201,8 @@
   <section class="slide" data-title="Title">
     <div class="slide-inner">
       <div class="eyebrow">ICFO · Quantum Nano-Optoelectronics: personal project presentation</div>
-      <h1 class="display">An agentic loop for<br />stochastic rare-event discovery</h1>
-      <p class="lead">Benchmarking a three-agent MSM pipeline against exact Kramers physics, with moiré stacking-domain switching as the motivating, not yet modeled, target application.</p>
+      <h1 class="display">An agentic loop for<br />stochastic rare-event analysis</h1>
+      <p class="lead">AI agents set up the analysis of a hopping particle under a code-based physics check, and every result is compared with the exactly computed answer. Moiré stacking-domain switching is the motivation, not a modeled system.</p>
       <p class="kicker mono">Inés Alonso · moiré-msm-engine</p>
       <p class="kicker mono" style="margin-top:4px"><a href="https://github.com/inesalonsoo/multiagent_for2Dphysics" style="color:inherit">github.com/inesalonsoo/multiagent_for2Dphysics</a></p>
     </div>
@@ -215,11 +212,11 @@
   <section class="slide" data-title="The question">
     <div class="slide-inner">
       <div class="eyebrow">Motivation</div>
-      <h2 class="display">Can a multi-agent LLM system be trusted to discover an analysis pipeline when every claim it makes is checked against a known, closed-form answer?</h2>
-      <p class="lead">A narrow question, where every result below is checked against an exact physical answer, not against another model or a fit.</p>
+      <h2 class="display">Can AI agents be trusted to set up a scientific analysis, if every result is checked against an exactly known answer?</h2>
+      <p class="lead">We test this on a problem whose true answer we can compute, so nothing rests on another model or a fit.</p>
       <div class="callout caution" style="margin-top:28px;max-width:660px">
-        <span class="tag">Where moiré materials fit: motivation, not derivation</span>
-        Real twisted-bilayer-graphene stacking domains sit on a 2-component displacement field with three-fold (AA/AB/BA) symmetry, and relax as an elastic soliton network, not a scalar double well, not single-particle thermal hopping. Nothing here derives from moiré elasticity; the tilt <span class="mono">b</span> is a toy symmetry-breaking stand-in. Moiré motivates <em>why</em> verified switching-rate discovery matters, it is not what Phase 4 models.
+        <span class="tag">Where moiré materials fit: motivation, not model</span>
+        Real twisted-bilayer stacking domains have a two-component displacement field with three-fold symmetry and relax as an elastic network, not as one particle in a double well. Nothing here is derived from moiré physics; the tilt <span class="mono">b</span> is a toy stand-in for symmetry breaking. Moiré motivates <em>why</em> verified switching rates matter.
       </div>
     </div>
   </section>
@@ -227,15 +224,16 @@
   <section class="slide" data-title="The benchmark system">
     <div class="slide-inner">
       <div class="eyebrow">The system</div>
-      <h2 class="display" style="font-size:1.7rem">The 0-D stochastic double well</h2>
+      <h2 class="display" style="font-size:1.7rem">A particle in a double well</h2>
       <div class="grid-2" style="margin-top:22px;align-items:center">
         <div class="stack">
           <p class="mono" style="font-size:1.05rem">dx = −V′(x) dt + √(2/β) dW</p>
           <p class="mono" style="font-size:1.05rem">V(x) = A(x² − 1)² + b·x</p>
-          <p class="lead" style="margin-top:2px">Two minima, one barrier, one tilt parameter. Chosen deliberately: it's one of the few stochastic systems where <strong>both</strong> sides of the check are closed-form — the Eyring–Kramers rate's exponent exact and its prefactor asymptotically exact (β→∞), matching to ~15-20% at the β this project uses, <strong>and</strong> the Boltzmann population ratio exact by symmetry. No fitting required on either side.</p>
+          <p class="lead" style="margin-top:2px">Picture a ball in two valleys, shaken by heat. It rattles inside one valley and now and then hops over the hill. β measures how cold the system is: higher β, rarer hops.</p>
+          <p class="lead">The hopping rate can be computed exactly from this equation (a one-second calculation), and so can how the time is shared between the valleys. The textbook Eyring–Kramers formula is only the cold limit: it overestimates the rate by 7–11% at the temperatures used here.</p>
           <div class="callout blue-tag" style="margin-top:6px">
-            <span class="tag">Why 0-D, not the 2D field directly</span>
-            The Eyring–Kramers prefactor has no known closed form in 2D (Rolland, Bouchet &amp; Simonnet, arXiv:1507.05577, §3.2.1). 0-D is the reference case every extended-field result in that literature is checked against. This project does the same.
+            <span class="tag">Why start in 0-D</span>
+            In 0-D the answer is exact. For the 2D field the barrier grows with the system's area, and the rate has no known closed form (Rolland, Bouchet &amp; Simonnet, arXiv:1507.05577, §3.2.1).
           </div>
         </div>
         <canvas class="well" id="well-main" height="320"></canvas>
@@ -245,17 +243,17 @@
 
   <section class="slide" data-title="Phase 1">
     <div class="slide-inner">
-      <div class="eyebrow">Phase 1: the verified engine</div>
-      <h2 class="display" style="font-size:1.7rem">The physics is real</h2>
+      <div class="eyebrow">Phase 1: the physics</div>
+      <h2 class="display" style="font-size:1.7rem">The analysis recovers the exact rate</h2>
       <div class="grid-2" style="margin-top:18px;gap:34px">
         <div class="fig">
-          <img src="data:image/png;base64,%%ARRHENIUS_B64%%" alt="Arrhenius plot: MSM-extracted relaxation rate vs. inverse temperature beta against the Eyring-Kramers analytical prediction, with a residual panel below showing percent deviation from the analytical rate" />
-          <div class="fig-cap">Two-panel figure: log-rate (top) vs. the analytical line; % deviation from analytical (bottom, linear). This was added specifically so Phase 2's error budget is visible, not just claimed.</div>
+          <img src="data:image/png;base64,%%ARRHENIUS_B64%%" alt="Measured MSM relaxation rate against inverse temperature beta, with the exact rate and the Eyring-Kramers limit, and a lower panel showing the percent deviation from the exact rate of the simulated chain" />
+          <div class="fig-cap">Top: measured rate (6 simulations per β) against the exact rate and the Eyring–Kramers limit. Bottom: deviation from the exact rate of the simulated chain.</div>
         </div>
         <div class="stack">
-          <div class="card"><h3>Gate 1: two macrostates</h3><p>Exactly 2 recovered by PCCA+ at every β, 6/6 replicas. Clean.</p></div>
-          <div class="card"><h3>Gate 2: Arrhenius slope</h3><p>Measured <span class="mono">−0.981</span> vs. exact <span class="mono">−1</span> (1.87% deviation, β ≤ 7) — gated on a 10% relative tolerance, not statistical significance: Eyring–Kramers is a β→∞ asymptotic formula, so a real O(1/β) correction exists at any finite β and doesn't shrink with more data.</p></div>
-          <div class="card"><h3>Two real bugs found en route</h3><p>Sparse-transition-count bias at high β, and a lag time (fixed at 20 frames) that wasn't actually converged. This was found by scanning the implied-timescale plateau, not assumed.</p></div>
+          <div class="card"><h3>How the model is built</h3><p>A Markov State Model cuts the path into 50 regions and counts the moves between them, looking a fixed time apart (the lag), set to a tenth of the slowest timescale it finds.</p></div>
+          <div class="card"><h3>Two valleys, really</h3><p>One slow process in all 42 measurements (t₂/t₃ ≥ 40.8 at the chosen lag; a single-valley control gives below 2), and the model predicts its own longer-lag behavior (Chapman–Kolmogorov error ≤ 0.03).</p></div>
+          <div class="card"><h3>The rate</h3><p>Consistent with the exact rate for every β the data resolve (3–9): no difference at the 1% level, with 1–3% precision at β = 3–5. At β = 10 the simulations see too few hops, and we report that instead of a number.</p></div>
         </div>
       </div>
     </div>
@@ -263,75 +261,73 @@
 
   <section class="slide" data-title="Phase 2">
     <div class="slide-inner">
-      <div class="eyebrow">Phase 2: uncertainty quantification</div>
-      <h2 class="display" style="font-size:1.7rem">The uncertainty is honest</h2>
-      <p class="lead">A bare Bayesian credible interval failed at 4 of 5 test points on the first attempt. This isn't a bug: statistical CIs say nothing about the systematic bias Phase 1 had already measured. Fix: report both, combine in quadrature, gate on the total.</p>
-      <div class="ruler-wrap">
-        <div class="col-head">Zooming into β = 5 (reference point) — the full sweep's residuals are the bottom panel of the previous slide's plot</div>
-        <svg id="ruler" viewBox="0 0 900 90" width="100%" height="90" role="img" aria-label="Error budget ruler showing statistical, systematic, and total bands around the measured rate, with the analytical rate marked"></svg>
-        <div class="ruler-legend">
-          <span><i class="swatch" style="background:var(--blue);opacity:.28"></i>total band ±3.16% (statistical ⊕ systematic)</span>
-          <span><i class="swatch" style="background:var(--blue)"></i>statistical only ±1.08%</span>
-          <span><i class="swatch" style="background:var(--red)"></i>analytical rate (predicted)</span>
-        </div>
+      <div class="eyebrow">Phase 2: error bars</div>
+      <h2 class="display" style="font-size:1.7rem">The built-in error bars are not honest</h2>
+      <p class="lead">The MSM software reports Bayesian error bars. We checked them against the exact answer.</p>
+      <div class="grid-2" style="margin-top:18px;gap:20px">
+        <div class="card"><h3 class="mono">2 of 42</h3><p>90% intervals that contain the exact rate. Honest intervals would contain it about 38 times.</p></div>
+        <div class="card"><h3 class="mono">11–193×</h3><p>How much narrower they are than the real spread between independent simulations.</p></div>
       </div>
-      <p class="kicker" style="margin-top:16px">Full sweep, total band width at β = 3…7: <span class="mono">7.12% · 6.23% · 3.16% · 3.22% · 3.66%</span> — gate passed at every point.</p>
+      <div class="grid-2" style="margin-top:16px;gap:20px">
+        <div class="callout caution"><span class="tag">Why</span>The software treats millions of overlapping, strongly correlated observations as if they were nearly independent, so it believes it knows far more than it does.</div>
+        <div class="callout good"><span class="tag">What we use instead</span>The spread between 6 independent simulations, measured directly.</div>
+      </div>
     </div>
   </section>
 
   <section class="slide" data-title="Phase 3 architecture">
     <div class="slide-inner">
-      <div class="eyebrow">Phase 3: the agentic loop</div>
+      <div class="eyebrow">Phase 3: the AI agents</div>
       <h2 class="display" style="font-size:1.7rem">Orchestrator · Optimizer · Validator</h2>
-      <p class="lead">Mirrors the Prover/Verifier separation of Axiomatic AI's Ax-Prover (arXiv:2510.12787, Breen et al.) — an independent, grounded verifier that the proposer cannot talk its way past.</p>
+      <p class="lead">Mirrors the Prover / Verifier split of Axiomatic AI's Ax-Prover (arXiv:2510.12787, Breen et al.): the agent that proposes cannot grade itself.</p>
       <div class="arch">
-        <div class="arch-box orchestrator"><h4>Orchestrator</h4><div class="role">no LLM, no physics</div><p>Task assignment, feedback routing, owns the stop decision. A pure function of the verdict and iteration count.</p></div>
+        <div class="arch-box orchestrator"><h4>Orchestrator</h4><div class="role">no AI, no physics</div><p>Runs the analysis on each proposal, routes the results, and decides when to stop, by a fixed rule.</p></div>
         <div class="arch-arrow-v"></div>
         <div class="arch-row">
-          <div class="arch-box"><h4>Optimizer</h4><div class="role">≙ Prover</div><p>Proposes (n_clusters, lag) via a deterministic tool call. Told not to predict its own score — a prompted norm, not schema-enforced like the other two boxes here.</p></div>
-          <div class="arch-box"><h4>Validator</h4><div class="role">≙ Verifier</div><p>Computes hard physics checks in Python <em>before</em> the LLM sees them. Verdict is schema-enforced, not the LLM's opinion.</p></div>
+          <div class="arch-box"><h4>Optimizer</h4><div class="role">≙ Prover</div><p>An AI that proposes settings (number of regions, lag time). Asked not to predict its own score: a prompted rule, not an enforced one.</p></div>
+          <div class="arch-box"><h4>Validator</h4><div class="role">≙ Verifier</div><p>Checks the physics in ordinary code before any AI is asked: one slow process, and a rate within ±5.6% of the exact value (3 × the spread of 6 simulations). Its AI only comments; it cannot overturn a check.</p></div>
         </div>
-        <div class="arch-ledger">every iteration → one JSON ledger entry (config, result, verdict, reasoning)</div>
+        <div class="arch-ledger">every round → one JSON ledger entry (settings, measurements, verdict, reasoning)</div>
       </div>
     </div>
   </section>
 
   <section class="slide" data-title="Phase 3 result">
     <div class="slide-inner">
-      <div class="eyebrow">Phase 3: real result</div>
-      <h2 class="display" style="font-size:1.7rem">The agents search; the verifier constrains</h2>
+      <div class="eyebrow">Phase 3: result</div>
+      <h2 class="display" style="font-size:1.7rem">The machinery works; the rate check is too loose</h2>
       <div class="grid-2" style="margin-top:14px;gap:34px;align-items:start">
         <div class="fig">
-          <img src="data:image/png;base64,%%PHASE3_B64%%" alt="Accepted relaxation rate per converged run, all inside the Phase 2 total error band, against the analytical rate" />
-          <div class="fig-cap">4 real runs, <span class="mono">anthropic:claude-sonnet-5</span>, β = 5.0.</div>
+          <img src="data:image/png;base64,%%PHASE3_B64%%" alt="Measured rate divided by the exact rate for the 17 settings the agents tried, against lag time, all inside the Validator's band; crosses mark the 4 settings the original check accepted" />
+          <div class="fig-cap">The 17 settings the agents tried (4 real runs, <span class="mono">claude-sonnet-5</span>, β = 5), re-checked against the exact rate without new AI calls.</div>
         </div>
         <table class="data">
-          <thead><tr><th>Run</th><th>Iters</th><th>Accepted config</th><th>Rate</th></tr></thead>
+          <thead><tr><th>Run</th><th>Rounds</th><th>Accepted</th><th>Rate / exact</th></tr></thead>
           <tbody>
-            <tr><td>1</td><td class="num">6</td><td class="mono">n=60, lag=20</td><td class="num">0.011853</td></tr>
-            <tr><td>2</td><td class="num">4</td><td class="mono">n=50, lag=50</td><td class="num">0.011797</td></tr>
-            <tr><td>3</td><td class="num">5</td><td class="mono">n=75, lag=20</td><td class="num">0.011774</td></tr>
-            <tr><td>4</td><td class="num">5</td><td class="mono">n=100, lag=10</td><td class="num">0.011764</td></tr>
+            <tr><td>1</td><td class="num">6</td><td class="mono">n=60, lag=20</td><td class="num">1.055</td></tr>
+            <tr><td>2</td><td class="num">4</td><td class="mono">n=50, lag=50</td><td class="num">1.050</td></tr>
+            <tr><td>3</td><td class="num">5</td><td class="mono">n=75, lag=20</td><td class="num">1.048</td></tr>
+            <tr><td>4</td><td class="num">5</td><td class="mono">n=100, lag=10</td><td class="num">1.047</td></tr>
           </tbody>
         </table>
       </div>
       <div class="grid-2" style="margin-top:20px;gap:34px">
-        <div class="callout good"><span class="tag">v1 → v2, honestly</span>v1 (8 runs): every run proposed the byte-identical config — the prompt handed the Optimizer the solved lag. Redesigned to hand over only the search space. v2: 20/20 rejections, 100% attributable to a real physics gate, 0% ill-posed.</div>
-        <div class="callout caution"><span class="tag">One-sided in these 4 runs: checked directly</span>All 4 accepted and all 20 rejected configs sat below the analytical rate. Checked directly against the real pipeline (no LLM): a too-short lag overestimates the rate by up to 82%, and the same Validator function correctly rejects it. Gate confirmed symmetric — but no real <em>agentic</em> run has produced an overestimate yet, only this direct check.</div>
+        <div class="callout caution"><span class="tag">What the re-check showed</span>The original check compared against Eyring–Kramers, 8% above the simulated chain's exact rate. It accepted only short-lag settings (about 5% high) and rejected accurate ones. Against the exact rate, all 17 settings fall inside the ±5.6% band, so this absolute check cannot catch a 5% bias.</div>
+        <div class="callout good"><span class="tag">What still holds</span>Runs explore differently (shared first steps, then divergent paths), and the AI cannot override a verdict. The rate's fall with lag is clear within one simulation, so requiring a converged lag, as Phase 1 does, would catch the bias.</div>
       </div>
     </div>
   </section>
 
   <section class="slide" data-title="Lean oracle">
     <div class="slide-inner">
-      <div class="eyebrow">Phase 3.5: formal verification</div>
-      <h2 class="display" style="font-size:1.7rem">The known answers, formally stated</h2>
-      <p class="lead">Every physics check in Phase 3 leans on <span class="mono">known_answers.py</span>'s hardcoded constants — curvature, critical points, barrier height — derived once by hand in a docstring and never independently checked since. Phase 3.5 asks the narrower question that gap leaves open: can those derivations themselves be formally verified, not just trusted? Ax-Prover's actual tool is Lean, not just a structural analogy anymore, so we test it directly on this project's own oracle. The constants are now formally <em>stated</em> in Lean 4 + Mathlib, curvature and critical points as corollaries of two foundational derivative theorems — once those proofs are actually discharged (not yet: 5 of 7 still end in <span class="mono">sorry</span>, which Lean accepts for any goal, with only a warning), a wrong differentiation won't be able to hide behind a correct-looking substitution.</p>
+      <div class="eyebrow">Phase 3.5: formal proofs</div>
+      <h2 class="display" style="font-size:1.7rem">Proving the math behind the checks</h2>
+      <p class="lead">The physics rests on facts about the landscape: its slope, where the valleys are, how curved they are, how high the hill is. The Lean proof assistant accepts a proof only if every step is correct. We wrote 7 statements in Lean 4 + Mathlib; provers write the proofs and never edit the statements.</p>
       <div class="lean-block" style="margin-top:16px">
         <span class="kw">theorem</span> curvature_at_saddle (A : ℝ) :<br />
         &nbsp;&nbsp;deriv (V' A 0) 0 = -4 * A := <span class="sorry">by sorry</span>
       </div>
-      <p class="kicker" style="margin-top:14px">7 theorem statements written; 5 still end in <span class="mono">sorry</span>, 2 are fully proved: the b=0 symmetry (pure algebra, via ax-prover) and <span class="mono">V_hasDerivAt</span> (via Lemma, a separate tool, at my direction and outside the ax-prover workflow; <span class="mono">#print axioms</span> shows no <span class="mono">sorryAx</span>). Scope, drawn deliberately: <strong>Claude Code writes statements — <span class="sorry" style="font-weight:600">an external prover writes proofs</span>, never touching the statement.</strong> Out of scope by design: the Eyring–Kramers rate itself (Fokker–Planck asymptotics, not algebra), any MSM convergence claim, and exact tilted-well positions (irrational roots — <span class="mono">brentq</span> is the honest answer there).</p>
+      <p class="kicker" style="margin-top:14px">2 proved: the left-right symmetry (by ax-prover) and the slope formula <span class="mono">V_hasDerivAt</span> (by Lemma, a separate tool, at my direction). Lean's axiom check shows neither relies on an unproved step; the 5 open statements still do. The curvature and barrier facts back the Eyring–Kramers comparison; the exact rates are computed numerically. This project's main error (treating an approximate rate as exact) was outside what Lean checks. Out of scope by design: the Eyring–Kramers formula itself, MSM convergence, and exact tilted-well positions.</p>
     </div>
   </section>
 
@@ -342,66 +338,61 @@
       <div class="grid-2" style="margin-top:18px;gap:30px">
         <div class="stack">
           <div class="col-head" style="color:var(--blue)">Directed by me</div>
-          <div class="card"><p>Diagnosed the symmetric-well dead end (Δf = 0 → curvature-limited switching) before any redesign was proposed.</p></div>
-          <div class="card"><p>Rejected "tighten the tolerance until a config fails" twice — once for the convergence study, again for the one-sided-gate question — and specified "test it directly against real data" instead both times.</p></div>
-          <div class="card"><p>Drew the Lean scope boundary myself: statements only, no proofs, no rate formula, no MSM-convergence "theorems" — a category error I ruled out before any Lean code was written.</p></div>
+          <div class="card"><p>Rejected "tighten the tolerance until a config fails" and asked for direct tests against real data instead.</p></div>
+          <div class="card"><p>Drew the Lean scope boundary: statements only, no rate formula, no MSM-convergence "theorems" (a category error).</p></div>
+          <div class="card"><p>Asked for an independent science review before sharing, chose to fix the physics rather than add caveats, and kept the negative Phase 2 result as it is.</p></div>
           <div class="card"><p>Set every protected physics parameter (β, A, b, L) and chose the agent model, weighing cost against reasoning quality.</p></div>
         </div>
         <div class="stack">
           <div class="col-head">Executed by Claude Code</div>
-          <div class="card"><p>Implementation of every module, docstrings, and the test suite (102 passed, 3 skipped).</p></div>
-          <div class="card"><p>The session-by-session log in <span class="mono">PROJECT_STATE.md</span>.</p></div>
-          <div class="card"><p>Diagnosing <em>why</em> a gate failed once told which gate failed and given the freedom to investigate.</p></div>
+          <div class="card"><p>Implementation of every module, the docstrings, and the test suite (112 tests).</p></div>
+          <div class="card"><p>The project log (<span class="mono">docs/HISTORY.md</span>) and the current state (<span class="mono">PROJECT_STATE.md</span>).</p></div>
+          <div class="card"><p>The science review and the fixes it led to, once the direction was set.</p></div>
           <div class="card"><p>Drafting the agent prompts, schema contracts, and Lean theorem statements, to the design constraints.</p></div>
         </div>
       </div>
-      <p class="kicker" style="margin-top:18px">CLAUDE.md's "nothing is a black box" rule is itself my decision: every function must be explainable out loud.</p>
+      <p class="kicker" style="margin-top:18px">CLAUDE.md's "nothing is a black box" rule is my decision: every function must be explainable out loud.</p>
     </div>
   </section>
 
   <section class="slide" data-title="What I learned">
     <div class="slide-inner">
       <div class="eyebrow">Reflection</div>
-      <h2 class="display" style="font-size:1.7rem">What this project actually taught me</h2>
+      <h2 class="display" style="font-size:1.7rem">What this project taught me</h2>
       <div class="stack" style="margin-top:18px;gap:14px">
         <div class="card">
-          <h3>1 · Built the physics from scratch, not just the formula I needed</h3>
+          <h3>1 · Learned the physics from scratch</h3>
           <ul>
-            <li>No prior background in stochastic thermodynamics: worked up Kramers escape theory, the Eyring–Kramers prefactor, detailed balance, and why a rate and an equilibrium ratio are different kinds of "exact."</li>
+            <li>Kramers escape theory, detailed balance, and why a rate and an equilibrium ratio are different kinds of "exact."</li>
             <li>Read Rolland, Bouchet &amp; Simonnet (arXiv:1507.05577) in full.</li>
-            <li>That helped me diagnosing ΔF = 0 in the symmetric well as a structural dead end (curvature-limited switching) not a tuning problem.</li>
           </ul>
         </div>
         <div class="card">
-          <h3>2 · Went from reading about scientific tooling to guiding it</h3>
+          <h3>2 · An approximation is not an answer key</h3>
           <ul>
-            <li>deeptime's MSM / TICA / Bayesian-UQ machinery: from documentation to deployment. Some previous experience from my PHPB&amp;QOT ICFO project.</li>
-            <li>Designed schema-enforced agent contracts (pydantic-ai) instead of trusting free-text LLM output.</li>
-            <li>Specific lesson: a statistical confidence interval is not an error budget. Systematic bias has to be measured and added in quadrature, not assumed away.</li>
+            <li>Eyring–Kramers is exact only for very cold systems; as our reference it was 9% off at β = 5.</li>
+            <li>Our early "agreement" came from two errors cancelling. Computing the exact rate took one second.</li>
           </ul>
         </div>
         <div class="card">
-          <h3>3 · "Tighten the tolerance until something fails" proves nothing</h3>
+          <h3>3 · Error bars must be tested, not assumed</h3>
           <ul>
-            <li>Rejected this twice: the convergence-study redesign, and the one-sided-gate question.</li>
-            <li>Manufacturing a rejection against a known-right answer is not the same as finding a real one.</li>
-            <li>Both times the better move was the harder one: test the missing case directly against real data.</li>
+            <li>An error budget built from the observed deviation can never fail, so it proves nothing.</li>
+            <li>The Bayesian error bars covered the truth 2 times in 42. Coverage against a known answer is the real test.</li>
           </ul>
         </div>
         <div class="card">
-          <h3>4 · An MSM lag time must be verified, not assumed; and no LLM shortcut replaces that</h3>
+          <h3>4 · MSM lag times converge slowly</h3>
           <ul>
-            <li>Phase 1's fixed lag = 20 was under-converged at high β.</li>
-            <li>Caught only by manually scanning the implied-timescale plateau.</li>
-            <li>AI tooling accelerated everything around this step. It did not replace verifying it by hand.</li>
+            <li>Waiting until the rate barely changes between lags stops too early.</li>
+            <li>The measured rate approaches the truth from above as the lag grows.</li>
           </ul>
         </div>
         <div class="card">
           <h3>5 · Handing an optimizer the answer is not a demonstration of search</h3>
           <ul>
-            <li>v1's prompt leaked the converged lag to the Optimizer as "a well-motivated starting region."</li>
-            <li>All 8 runs then proposed it verbatim on iteration 1, so the Validator's gate was never tested against a wrong config.</li>
-            <li>The flaw was in the demonstration, not the architecture. Removing the leak let a real search, and a real rejection, happen.</li>
+            <li>An early prompt leaked the lag then believed converged (20 frames, now known to be about 5% biased), and all 8 runs proposed it on their first try.</li>
+            <li>Removing the leak let a real search happen. Its checks, in turn, are only as good as the reference they use.</li>
           </ul>
         </div>
       </div>
@@ -412,28 +403,31 @@
     <div class="slide-inner">
       <div class="eyebrow">Self-critique</div>
       <h2 class="display" style="font-size:1.7rem">What I'd push back on myself</h2>
-      <div class="col-head fixed" style="margin-top:6px">Fixed since the last internal review</div>
+      <div class="col-head fixed" style="margin-top:6px">Fixed after the science review</div>
       <div class="grid-2" style="margin-top:8px;gap:16px">
-        <div class="callout good"><span class="tag">Moiré scope</span>README now states the gap explicitly ("Where moiré materials fit") instead of implying a physical correspondence that doesn't exist.</div>
-        <div class="callout good"><span class="tag">Invisible error bars</span>Phase 1's plot gained a linear residual panel — Phase 2's whole contribution is now visible, not just claimed.</div>
+        <div class="callout good"><span class="tag">Exact reference</span>Every check now uses the exactly computed rate, not the Eyring–Kramers limit.</div>
+        <div class="callout good"><span class="tag">No circular checks</span>An error budget built from its own result, and a two-valley test that could not fail, were replaced.</div>
       </div>
       <div class="col-head open" style="margin-top:22px">Still open</div>
       <div class="grid-2" style="margin-top:8px;gap:16px">
-        <div class="callout caution"><span class="tag">One-sided, in real runs</span>Confirmed symmetric by a direct pipeline check — but no real <em>agentic</em> run has yet produced an accepted or rejected overestimate.</div>
-        <div class="callout caution"><span class="tag">N = 4</span>The convergence study shows the mechanism works, not a failure rate. Tail behavior is untested.</div>
-        <div class="callout caution"><span class="tag">Unverified conversion</span>Phase 4's L_theirs = 2·L_ours is analytically self-consistent but not yet checked against a simulated front width.</div>
-        <div class="callout caution"><span class="tag">Lean proofs: attempted, 2/7 proven</span>The b=0 symmetry via ax-prover; <span class="mono">V_hasDerivAt</span> via Lemma, after 11 failed ax-prover attempts (the errors went to DEBUG, which this run didn't capture) and a personal-funds API credit wall. In 0.1.1, text-based target selection queued the <span class="mono">import Mathlib</span> block as a theorem (the batch's first 11 iterations) and read <span class="mono">V'_hasDerivAt</span> as <span class="mono">V</span>, so never queued it. Already fixed upstream: 0.2.0, now installed, finds targets with the Lean elaborator. Why the 11 real attempts failed is still unknown.</div>
+        <div class="callout caution"><span class="tag">Overconfident error bars</span>The Bayesian intervals are far too narrow (Phase 2).</div>
+        <div class="callout caution"><span class="tag">Loose rate check</span>The agents' ±5.6% band cannot catch a 5% bias and rests on 6 simulations (Phase 3).</div>
+        <div class="callout caution"><span class="tag">Small study</span>4 agent runs show the mechanism, not a failure rate.</div>
+        <div class="callout caution"><span class="tag">Assumed, not tested</span>Detailed balance is built into the MSM estimator.</div>
+        <div class="callout caution"><span class="tag">Lean: 2 of 7 proved</span>The next proofs wait on a budgeted ax-prover run.</div>
+        <div class="callout caution"><span class="tag">2D parameters</span>The barrier grows with area: 125–188 kT at the planned L = 2.5, β = 20–30, so no hops. To be re-chosen.</div>
       </div>
     </div>
   </section>
 
   <section class="slide" data-title="Next steps">
     <div class="slide-inner">
-      <div class="eyebrow">What's live: human's call</div>
-      <h2 class="display" style="font-size:1.7rem">Two open forward paths</h2>
+      <div class="eyebrow">What's next</div>
+      <h2 class="display" style="font-size:1.7rem">Three forward paths</h2>
       <div class="stack" style="margin-top:10px">
-        <div class="card"><h3>A · Phase 4 — the 2D deployment</h3><p>Wire the dormant Boltzmann check into <span class="mono">ValidatorDecision</span> (well-identity tracking already built) · numerically validate the L_theirs = 2·L_ours conversion against a simulated front width · run at the corrected L ≈ 2.5, β ≈ 20–30, b = 0.1 · validate qualitatively against the Phase 1 reference — no 2D analytical rate exists in the literature to stake correctness on.</p></div>
-        <div class="card"><h3>B · Module 3.9 — resume discharging the Lean proofs</h3><p>Already attempted for real: 2/7 theorems proven (<span class="mono">V_hasDerivAt</span> via Lemma, after 11 failed ax-prover iterations and an API credit wall — a personal-funds constraint on an undergraduate project). Next: rerun <span class="mono">ax-prover prove</span> on the remaining 5 theorems with 0.2.0 and DEBUG logging, cheapest first (<span class="mono">barrier_height_eq</span>). The 2 skipped Group B consistency tests also need redesigning: they expect all 7 theorems in one prover output JSON, which a batch run never produces.</p></div>
+        <div class="card"><h3>A · Formal proofs</h3><p>Run ax-prover 0.2.0 (its target selection now verified on this file) on <span class="mono">barrier_height_eq</span>, then <span class="mono">V'_hasDerivAt</span>, with full logging and a set budget.</p></div>
+        <div class="card"><h3>B · A sharper agent check</h3><p>Make the Validator require a converged lag, as Phase 1 does, estimate its band from all temperatures, then run the agents again.</p></div>
+        <div class="card"><h3>C · Phase 4, the 2D field</h3><p>Re-choose the parameters knowing the barrier grows with area, check every result on two grid sizes, and compare qualitatively with the 0-D reference.</p></div>
       </div>
     </div>
   </section>
@@ -442,11 +436,11 @@
     <div class="slide-inner">
       <div class="eyebrow">Close</div>
       <h2 class="display" style="font-size:1.7rem">Questions</h2>
-      <p class="lead" style="margin-top:8px">102 tests passed, 3 skipped (2 Lean Group B, gated on a prover output JSON; 1 held-out UQ gate, pending a cache regeneration) · zero real API calls in the test suite · every session logged in <span class="mono">PROJECT_STATE.md</span>.</p>
+      <p class="lead" style="margin-top:8px">112 automated tests pass, with no AI calls in the test suite. The full history is in <span class="mono">docs/HISTORY.md</span>.</p>
       <div class="stack" style="margin-top:24px">
-        <p class="kicker">Rolland, Bouchet &amp; Simonnet — <em>Computing transition rates for the 1-D stochastic Ginzburg–Landau–Allen-Cahn equation</em>, arXiv:1507.05577</p>
-        <p class="kicker">Axiomatic AI (Breen et al.) — <em>Ax-Prover: A Deep Reasoning Agentic Framework for Theorem Proving</em>, arXiv:2510.12787 — the architecture Phase 3 mirrors</p>
-        <p class="kicker">Requena, Letson, Nowakowski, Beltran-Ferreiro &amp; Sarra — <em>A Minimal Agent for Automated Theorem Proving</em>, arXiv:2602.24273 — the actual <span class="mono">ax-prover</span> tool run in Module 3.9</p>
+        <p class="kicker">Rolland, Bouchet &amp; Simonnet, <em>Computing transition rates for the 1-D stochastic Ginzburg–Landau–Allen–Cahn equation…</em>, arXiv:1507.05577</p>
+        <p class="kicker">Breen et al. (Axiomatic AI), <em>Ax-Prover: A Deep Reasoning Agentic Framework for Theorem Proving in Mathematics and Quantum Physics</em>, arXiv:2510.12787: the architecture Phase 3 mirrors</p>
+        <p class="kicker">Requena, Letson, Nowakowski, Beltran-Ferreiro &amp; Sarra, <em>A Minimal Agent for Automated Theorem Proving</em>, arXiv:2602.24273: the <span class="mono">ax-prover</span> tool used for the proofs</p>
       </div>
     </div>
   </section>
@@ -511,7 +505,7 @@
     }
   });
 
-  // --- Double-well potential, drawn from the real function y = A(x^2-1)^2 + b*x ---
+  // Double-well landscape, drawn from the real function y = A(x^2-1)^2 + b*x
   function drawWell(canvasId, opts) {
     var canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -582,56 +576,6 @@
     drawWell('well-title', { tilt: 0.12, labels: false });
     drawWell('well-main', { tilt: 0.12, labels: true });
   });
-
-  // --- Error-budget ruler (Phase 2, beta = 5) ---
-  (function drawRuler() {
-    var svg = document.getElementById('ruler');
-    if (!svg) return;
-    var mean = 0.011782, statRel = 0.0108, sysRel = 0.0297, totalRel = 0.0316, analytical = 0.012133;
-    var domainMin = 0.0113, domainMax = 0.0124;
-    var x0 = 30, x1 = 870, yMid = 46;
-    function X(v) { return x0 + (v - domainMin) / (domainMax - domainMin) * (x1 - x0); }
-
-    var styles = getComputedStyle(document.documentElement);
-    var blue = styles.getPropertyValue('--blue').trim();
-    var red = styles.getPropertyValue('--red').trim();
-    var inkSoft = styles.getPropertyValue('--ink-soft').trim();
-    var mono = 'ui-monospace, monospace';
-
-    var totalLo = mean * (1 - totalRel), totalHi = mean * (1 + totalRel);
-    var statLo = mean * (1 - statRel), statHi = mean * (1 + statRel);
-
-    var ns = 'http://www.w3.org/2000/svg';
-    function el(tag, attrs) {
-      var e = document.createElementNS(ns, tag);
-      for (var k in attrs) e.setAttribute(k, attrs[k]);
-      return e;
-    }
-
-    svg.innerHTML = '';
-    svg.appendChild(el('line', { x1: x0, x2: x1, y1: yMid, y2: yMid, stroke: inkSoft, 'stroke-width': 1, opacity: .35 }));
-
-    // total band
-    svg.appendChild(el('rect', {
-      x: X(totalLo), y: yMid - 14, width: X(totalHi) - X(totalLo), height: 28,
-      fill: blue, opacity: .22, rx: 2
-    }));
-    // statistical band
-    svg.appendChild(el('rect', {
-      x: X(statLo), y: yMid - 7, width: X(statHi) - X(statLo), height: 14,
-      fill: blue, opacity: .75, rx: 2
-    }));
-    // mean marker
-    svg.appendChild(el('line', { x1: X(mean), x2: X(mean), y1: yMid - 20, y2: yMid + 20, stroke: blue, 'stroke-width': 2 }));
-    // analytical marker
-    svg.appendChild(el('line', { x1: X(analytical), x2: X(analytical), y1: yMid - 24, y2: yMid + 24, stroke: red, 'stroke-width': 2.4 }));
-    var atxt = el('text', { x: X(analytical), y: yMid - 30, 'text-anchor': 'middle', fill: red, 'font-family': mono, 'font-size': 11 });
-    atxt.textContent = 'analytical ' + analytical.toFixed(6);
-    svg.appendChild(atxt);
-    var mtxt = el('text', { x: X(mean), y: yMid + 38, 'text-anchor': 'middle', fill: inkSoft, 'font-family': mono, 'font-size': 11 });
-    mtxt.textContent = 'measured ' + mean.toFixed(6);
-    svg.appendChild(mtxt);
-  })();
 
   setActive(0);
 })();

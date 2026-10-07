@@ -100,7 +100,7 @@ def test_llm_overridden_is_false_when_llm_correctly_predicts_reject():
 def test_passed_in_verdict_field_is_ignored_not_just_defaulted():
     """
     Even if a caller explicitly passes verdict="ACCEPT" alongside a failing
-    check, the model_validator must still overwrite it -- the guarantee
+    check, the model_validator must still overwrite it: the guarantee
     cannot be bypassed by supplying the field directly.
     """
     decision = ValidatorDecision(
@@ -132,7 +132,7 @@ def test_ledger_entry_round_trips_through_json():
     """
     The ledger is written to disk as JSON (results/ledger.json). A
     LedgerEntry built from real-looking data must serialize and parse back
-    to an identical object -- this is the actual artifact end users read.
+    to an identical object, since this file is what people read.
     """
     config = _make_config()
     result = _make_result(config)

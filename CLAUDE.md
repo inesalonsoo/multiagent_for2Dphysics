@@ -1,24 +1,16 @@
-# CLAUDE.md — Project Constitution
+# CLAUDE.md: Project Constitution
 
 ## What this project is
 An autonomous multi-agent system that runs a Markov State Model (MSM)
-pipeline on trajectories from a stochastic double-well system, verifies
-the recovered physics against KNOWN ANALYTICAL ANSWERS, and reports
+pipeline on trajectories from a stochastic double well, verifies the
+recovered physics against exactly computed answers, and reports
 uncertainty. The benchmark physics is textbook and checkable.
 
-**[2026-07-11] Phase 1/Phase 4 pivot** (see PROJECT_STATE.md §9 for full
-reasoning): Phase 1's verified engine is now the 0-D stochastic double well
-dx = -V'(x)dt + sqrt(2/beta)dW, where BOTH the Eyring-Kramers rate (exponent
-exact, prefactor asymptotically exact) and the Boltzmann well-population
-ratio (exact by symmetry) are closed-form and observable — cleaner and
-unambiguous, unlike the 2D field where the Eyring-Kramers prefactor is not
-analytically known even in 2D (Rolland, Bouchet & Simonnet 2015,
-arXiv:1507.05577, §3.2.1). The stochastic 2D Allen-Cahn
-field moves to Phase 4 as the "interesting deployment": run at small L (a
-few interface widths) so it switches coherently, validated qualitatively
-against the 0-D reference rather than staked on a 2D analytical rate.
-Moiré materials remain the motivating target application, now folded into
-this Phase 4 deployment (tilt b) rather than a separate late demo.
+Phase 1's engine is the 0-D double well dx = -V'(x)dt + sqrt(2/beta)dW,
+whose relaxation rate and basin populations can be computed exactly
+(physics/known_answers.py). The 2D stochastic Allen-Cahn field is Phase 4,
+validated qualitatively against the 0-D reference. Moiré materials are the
+motivating application, not a modeled system.
 
 ## Core principle: NOTHING IS A BLACK BOX
 The human author is learning. Every function you write MUST have:
@@ -27,21 +19,25 @@ The human author is learning. Every function you write MUST have:
 - A comment on any line doing non-obvious math.
 If a simpler-but-longer version exists, write the longer version.
 
+## Style (documentation, docstrings, comments)
+- Short sentences in plain English, one idea each.
+- No em dashes, and no " -- " used as a dash. Use a period, comma, colon or
+  parentheses instead.
+- Claim only what the code, a test, or a log in the repo supports. Say
+  "exact", "proves" or "verified" only when literally true.
+- No dated history notes in code or docs; history belongs in the
+  PROJECT_STATE.md session log.
+
 ## HARD BOUNDARIES (never violate)
 1. NEVER install a package not on the approved list below without asking.
    Approved: numpy, scipy, matplotlib, py-pde, deeptime, scikit-learn,
    pydantic, pydantic-ai, h5py, tqdm, pytest. Also ax-prover (optional,
-   Phase 3.5 only -- Lean oracle proof discharge, Module 3.9; this was
-   explicitly human-authorized in the 2026-07-30 session, PROJECT_STATE.md
-   Sec.9 -- the boundary was not violated, this list was just stale).
+   Phase 3.5 only, for Lean proofs; human-authorized).
 2. NEVER change physics parameters (barrier height, temperature, grid
    size) on your own. These are the human's decisions. Ask.
 3. NEVER add a new agent, tool, or pipeline stage that isn't in the
-   current phase's task list. Ask first.
-   **[2026-07-11] Phase 3's task list was updated to a three-agent
-   architecture (Optimizer, Validator, Orchestrator) before any code
-   referencing `agents/orchestrator.py` was written — see PROJECT_STATE.md
-   §7/§9. This is pre-authorized, not scope creep to flag.**
+   current phase's task list. Ask first. (Phase 3's three-agent
+   architecture is part of its task list.)
 4. NEVER write a function longer than ~40 lines. Split it.
 5. NEVER silently catch an exception. Every except block must log the
    full error. No bare `except:`.
@@ -62,174 +58,129 @@ If a simpler-but-longer version exists, write the longer version.
 After each session, append a dated entry with: what was built, what
 passed its check, current known bugs, and the single next task.
 At the START of each session, read PROJECT_STATE.md first and confirm
-your understanding before doing anything.
+your understanding before doing anything. The log before 2026-10-06 is
+archived in docs/HISTORY.md.
 
 ## PHYSICS GROUND TRUTH (the checks that define "correct")
-Phase 1 (0-D double well, PRIMARY benchmark):
-- V(x) = A(x²−1)² [+ b·x if tilted] has exactly TWO minima. The MSM must
-  recover exactly two dominant macrostates.
-- Eyring-Kramers rate (exponent exact; prefactor asymptotically exact,
-  β→∞, matching this project's own measured rate to a few percent within
-  its gated β≤7 range):
-  T = (2π/|λs|)·sqrt(|V''(xs)|/V''(x0))·exp(β(V(xs)−V(x0))) — see
-  physics/known_answers.py. A log(rate) vs β plot MUST be a straight line
-  of slope −ΔV.
-- Boltzmann well-population ratio (exact): P(x_+)/P(x_-) = exp(−βΔF),
-  ΔF = V(x_+)−V(x_-). For the symmetric well (b=0), ΔF=0 → ratio 1
-  (symmetric populations). For the tilted well, ΔF≈2b (see
-  physics/known_answers.py for the exact root-found value).
-- At equilibrium the system is time-reversible: detailed balance holds.
+Phase 1 (0-D double well, primary benchmark):
+- V(x) = A(x²−1)² [+ b·x if tilted] has exactly two minima for
+  |b| < 8A/(3√3). The MSM must show two metastable states: one slow
+  process, with t2/t3 above pipeline.msm.MIN_TIMESCALE_SEPARATION.
+- Relaxation rate: the reference is the exact rate λ2
+  (exact_relaxation_rate_0d) and, for simulated data, the exact rate of
+  the Euler-Maruyama chain at the simulation's dt
+  (euler_maruyama_relaxation_rate_0d; +1.2% at dt = 0.01). Twice the
+  one-way Eyring-Kramers rate sqrt(V''(x0)|V''(xs)|)/(2π)·exp(−βΔV) is
+  λ2's β→∞ limit (7-11% high at β = 3-7): a cross-check, not the oracle.
+- Basin population ratio: P+/P− is the ratio of the integrals of
+  exp(−βV) over the two basins (boltzmann_population_ratio). It is exactly
+  1 for b = 0. exp(−βΔV) of the minima alone misses the well widths.
+- Detailed balance holds at equilibrium. The reversible MSM estimator
+  imposes it, so it is an assumption here, not a check.
 If any of these fail, there is a BUG. Never present a failing result as
 correct.
 
 Phase 4 (2D stochastic Allen-Cahn field, deployment target):
-- Same double well, now spatially extended. Validated QUALITATIVELY
-  against the Phase 1 0-D reference (same MSM pipeline, same known-answer
-  gates), not staked on a 2D analytical rate — the Eyring-Kramers prefactor
-  is not known analytically in 2D even in the literature (see
-  PROJECT_STATE.md §9, citing Rolland-Bouchet arXiv:1507.05577 §3.2.1).
-- Unit conversion to the Rolland-Bouchet convention is NOT 1:1: with our
-  A=1, gamma=1, their L equals 2x ours (L_theirs = 2*L_ours) — verified via
-  both front-width and bifurcation-point matching. Always convert their
-  quoted (β,L) thresholds through this factor before using them; see
-  PROJECT_STATE.md §9 for the derivation and the corrected formulas.
-- **CAVEAT — the 2D continuum Allen-Cahn SPDE is ill-defined without
-  renormalization, a stronger statement than "the prefactor is unknown."**
-  Rolland, Bouchet & Simonnet §3.2.1, two sentences before the "nothing is
-  known even in dimension 2" passage quoted above: "Allen-Cahn equations
-  are in fact ill-defined when the spatial dimension is strictly larger
-  than one... One has to renormalize the equation properly." Our planned
-  Phase 4 setup (additive white noise, 32×32 grid) has no such
-  renormalization. Consequence: the grid is part of the model definition,
-  not just a numerical convergence knob — results can depend on lattice
-  spacing. A grid-refinement check (same physical L, 32×32 vs 64×64) is
-  required before quoting any Phase 4 rate, and every Phase 4 result must
-  be reported alongside its grid resolution. Flagged, not yet resolved;
-  no Phase 4 physics parameter has been changed because of this. See
-  PROJECT_STATE.md §9 for the full note.
+- Validated qualitatively against the Phase 1 reference, not against a
+  2D analytical rate: the Eyring-Kramers prefactor is not known
+  analytically in 2D (Rolland, Bouchet & Simonnet, arXiv:1507.05577,
+  §3.2.1).
+- Energies scale with area: the coherent-flip barrier is about L²·A, so
+  the field behaves like the 0-D system at β_eff = β·L². 0-D formulas and
+  the paper's 1-D thresholds do not transfer directly.
+- Unit conversion to Rolland-Bouchet: with A = 1, γ = 1, L_theirs =
+  2·L_ours. Time and temperature also rescale; derive the full conversion
+  before using any of their thresholds.
+- The 2D continuum SPDE with additive white noise is ill-defined without
+  renormalization (same §3.2.1). The grid is part of the model: every
+  Phase 4 result needs a grid-refinement check (same L, 32×32 vs 64×64)
+  and must be reported with its grid resolution.
 
 ## TECH STACK NOTES
 - deeptime is the MSM library (successor to PyEMMA). Use
-  deeptime.decomposition.TICA / VAMP, deeptime.clustering.KMeans,
-  deeptime.markov.msm.MaximumLikelihoodMSM and BayesianMSM.
-- py-pde handles the stochastic PDE. There is no `NoiseTerm` class; add thermal
-  noise via the `noise=` argument of `pde.PDE`, which takes a VARIANCE (so pass
-  `2*gamma/beta`, the square of the physical prefactor √(2γ/β)). No py-pde solver
-  supports adaptive time-stepping on a noisy PDE — use a fixed-step solver
-  (e.g. `solver="euler"`) for any stochastic run. See PROJECT_STATE.md §4/§8.
+  deeptime.clustering.KMeans and deeptime.markov.msm.MaximumLikelihoodMSM
+  and BayesianMSM. BayesianMSM with count_mode="effective" is
+  overconfident for this system (Phase 2 measured 2/42 coverage).
+- py-pde handles the stochastic PDE. There is no `NoiseTerm` class; add
+  thermal noise via the `noise=` argument of `pde.PDE`, which takes a
+  VARIANCE (pass `2*gamma/beta`, the square of the prefactor). No py-pde
+  solver supports adaptive time-stepping on a noisy PDE; use a fixed-step
+  solver (e.g. `solver="euler"`).
 - pydantic-ai handles agents. Every agent output is a Pydantic model.
 - Anthropic model string for agents: anthropic:claude-sonnet-5 (the
-  "anthropic:" provider prefix is required by pydantic-ai's infer_model();
-  a bare "claude-sonnet-5" raises "Unknown model"). **[2026-07-12]
-  Corrected from the stale "claude-sonnet-4-6" — see PROJECT_STATE.md §9
-  for the resolution of the standing "verify current model string"
-  reminder.**
-- **Phase 3 is a three-agent architecture — Orchestrator / Optimizer / Validator
-  — mirroring Ax-Prover's Orchestrator/Prover/Verifier separation (Axiomatic AI,
-  arXiv:2510.12787, Breen et al., §3.1).** The Orchestrator is a REAL
-  component (task assignment, feedback routing, owns the stop decision — Ax-Prover
-  §3.1.1), not loop plumbing folded into `agents/loop.py`'s while-statement;
-  `agents/loop.py` is deliberately thin (instantiates the three agents, hands
-  control to the Orchestrator, writes the JSON ledger). The Optimizer (≙ Prover)
-  proposes PipelineConfigs and calls the deterministic `run_msm_pipeline` tool
-  (≙ Ax-Prover's Lean tool calls). The Validator (≙ Verifier) is the independent
-  gatekeeper, grounded in `physics/known_answers.py`'s hardcoded Boolean physics
-  checks, and additionally does ill-posedness detection (Ax-Prover Appendix C) —
-  a config can be well-posed-but-wrong or ill-posed, and these must be reported
-  distinctly, not conflated. One deliberate departure from Ax-Prover, stated
-  explicitly rather than papered over: their Prover and Verifier share ONE tool
-  (Lean) and the Verifier's value is independence of judgment; here the
-  Optimizer's tool (VAMP-2, a statistical model-quality score) and the
-  Validator's oracle (independent analytical physics: Kramers rate, Boltzmann
-  ratio, two-state recovery) are genuinely different checks — a stronger
-  verification setup than the one being borrowed from, not a weaker copy of it.
-  Full reasoning: PROJECT_STATE.md §9 (2026-07-11 entry). One qualification on
-  "independent": the CHECK (Kramers rate, Boltzmann ratio) is an independent
-  closed-form oracle, but the ACCEPTANCE TOLERANCE around it is not an
-  independently chosen precision -- `agents/validator.py::load_rate_tolerance()`
-  reuses Phase 1's own measured total (statistical+systematic) deviation from
-  the analytical rate as the band width (Phase 1's own ensemble mean sits
-  ~0.29% above the resulting band's floor), so the gate is set at the
-  precision this project has already demonstrated it can measure, not an
-  a-priori target. See PROJECT_STATE.md §9 (2026-08-03 entry).
+  "anthropic:" prefix is required by pydantic-ai's infer_model()).
+- Phase 3 is a three-agent architecture mirroring Ax-Prover's
+  Orchestrator / Prover / Verifier (Axiomatic AI, arXiv:2510.12787, Breen
+  et al., §3.1):
+  - The Orchestrator routes: task assignment, feedback, the stop decision.
+    `agents/loop.py` stays thin (builds the agents, hands control to the
+    Orchestrator, writes the JSON ledger).
+  - The Optimizer (≙ Prover) proposes PipelineConfigs; the Orchestrator
+    runs each through the deterministic `run_msm_pipeline` tool.
+  - The Validator (≙ Verifier) computes the physics checks in Python before
+    the LLM is called: timescale separation, and the rate within
+    3 replica sigmas (Phase 1's 6-replica spread at β = 5) of the exact
+    chain rate.
+    It reports ill-posed configs (Ax-Prover Appendix C) separately from
+    well-posed configs that fail physics. The verdict is recomputed in the
+    schema, so the LLM cannot override it.
+  - One deliberate departure from Ax-Prover: there the Prover and Verifier
+    share one tool (Lean); here the Optimizer's guide (VAMP-2, comparable
+    only at equal lag) and the Validator's oracle (exact physics) are
+    different checks.
 
 ## Lean / ax-prover scope boundaries (Phase 3.5)
 
 IN SCOPE: formally verifying the *algebraic landscape facts* that
-physics/known_answers.py currently asserts in docstrings — barrier height,
-critical-point locations at b=0, second derivatives (8A at wells, -4A at
-saddle), and the b=0 symmetry giving ΔF=0.
+physics/known_answers.py relies on: barrier height, critical-point
+locations at b=0, second derivatives (8A at wells, -4A at saddle), and the
+b=0 symmetry giving ΔF=0.
 
-OUT OF SCOPE — do not attempt, do not scaffold toward:
+OUT OF SCOPE (do not attempt, do not scaffold toward):
 - Proving the Eyring-Kramers rate formula itself (Fokker-Planck spectral
   asymptotics; not in Mathlib).
 - Any theorem about the MSM estimator's statistical convergence. Not a
-  theorem — a category error.
+  theorem; a category error.
 - 2D Allen-Cahn / Rolland-Bouchet Eq. 13 (infinite-dim Hessian dets).
 - Exact well positions for b != 0: those are irrational cubic roots,
-  which is *why* known_answers.py uses brentq. For tilted case the only
+  which is *why* known_answers.py uses brentq. For the tilted case the only
   honest Lean statement is qualitative: sign(ΔF) vs sign(b), and ΔF=0 iff b=0.
 
 Claude Code writes theorem STATEMENTS ending in `sorry`. It does not write
-proof bodies. ax-prover writes proofs.
-**[2026-09-25] One human-authorized exception:** `V_hasDerivAt`'s proof body
-was written by Lemma (an external tool), at the human's explicit direction,
-outside the ax-prover workflow; its statement is unchanged. Claude Code
-still writes no proof bodies. See PROJECT_STATE.md §9 (2026-09-25 entry).
-
+proof bodies. ax-prover writes proofs. One human-authorized exception:
+`V_hasDerivAt`'s proof body was written by Lemma (an external tool) at the
+human's explicit direction, outside the ax-prover workflow; its statement
+is unchanged. Claude Code still writes no proof bodies.
 
 ## ARCHITECTURE
 
-moire-msm-engine/
-├── CLAUDE.md                  # the constitution (already created)
-├── PROJECT_STATE.md           # session log — author and Claude maintain this
-├── README.md                  # one-paragraph project description
+multiagent_for2Dphysics/
+├── CLAUDE.md                  # this constitution
+├── PROJECT_STATE.md           # current state + session log
+├── README.md                  # project overview and results
 ├── requirements.txt           # pinned package versions
-│
-├── physics/                   # THE ENVIRONMENT (generates data)
-│   ├── __init__.py
-│   ├── potential.py           # V(φ) and its derivative (shared, 0-D + 2D)
-│   ├── simulate_0d.py         # 0-D SDE integrator -- Phase 1 primary engine
-│   ├── simulate.py            # stochastic Allen-Cahn integrator -- Phase 4
-│   └── known_answers.py       # analytical values for verification
-│
-├── pipeline/                  # THE ANALYSIS (data → MSM)
-│   ├── __init__.py
-│   ├── features.py            # field snapshots → feature vectors
-│   ├── reduce.py              # TICA dimensionality reduction
+├── physics/                   # the environment (generates data)
+│   ├── potential.py           # V and dV/dx (shared, 0-D + 2D)
+│   ├── simulate_0d.py         # 0-D SDE integrator, Phase 1 engine
+│   ├── simulate.py            # 2D stochastic Allen-Cahn integrator, Phase 4
+│   └── known_answers.py       # exact reference values
+├── pipeline/                  # the analysis (data -> MSM)
+│   ├── features.py            # trajectory -> feature vectors
 │   ├── cluster.py             # k-means microstates
-│   ├── msm.py                 # build MSM, extract timescales
-│   └── uq.py                  # BayesianMSM confidence intervals
-│
-├── agents/                    # THREE-AGENT ARCHITECTURE (Ax-Prover pattern,
-│   │                          # arXiv:2510.12787 -- see TECH STACK NOTES above)
-│   ├── __init__.py
-│   ├── schemas.py             # Pydantic models = the contracts
-│   ├── tools.py               # deterministic functions agents call (run_msm_pipeline)
-│   ├── optimizer.py           # Optimizer Agent (≙ Prover)
-│   ├── validator.py           # Validator Agent (≙ Verifier) + ill-posedness checks
-│   ├── orchestrator.py        # Orchestrator Agent: task assignment, feedback
-│   │                          # routing, stop decision -- a real component
-│   └── loop.py                # THIN: instantiates the three agents, hands
-│                               # control to the Orchestrator, writes the JSON ledger
-│
-├── tests/                     # KNOWN-ANSWER CHECKS
-│   ├── test_potential.py
-│   ├── test_simulate_0d.py
-│   ├── test_simulate.py
-│   ├── test_msm_recovers_two_states.py
-│   ├── test_arrhenius.py
-│   └── test_agents_with_fake_llm.py
-│
-├── data/                      # trajectories (gitignored, streamed here)
-│   └── .gitkeep
-│
-├── results/                   # plots, ledgers, final outputs
-│   └── .gitkeep
-│
-└── scripts/                   # top-level runnable entry points
-    ├── run_phase1_benchmark.py
-    ├── run_phase2_uq.py
-    ├── run_phase3_agentic.py
-    └── run_phase4_moire_demo.py
-
+│   ├── msm.py                 # MSM, lag choice, CK and separation checks
+│   └── uq.py                  # BayesianMSM credible intervals
+├── agents/                    # three-agent loop (see TECH STACK NOTES)
+│   ├── schemas.py             # Pydantic contracts
+│   ├── tools.py               # run_msm_pipeline (deterministic)
+│   ├── optimizer.py           # Optimizer (≙ Prover)
+│   ├── validator.py           # Validator (≙ Verifier)
+│   ├── orchestrator.py        # routing and stop decision
+│   └── loop.py                # thin entry point, writes the ledger
+├── lean/                      # Lean 4 + Mathlib formalization (Phase 3.5)
+│   └── Oracle/Potential.lean  # the 7 statements about V
+├── tests/                     # known-answer tests, one file per module
+├── scripts/                   # runnable phase entry points
+├── results/                   # plots, raw data, ledgers, check logs
+├── presentation/              # slide deck (built from deck_template.html)
+├── docs/HISTORY.md            # archived session log
+└── archive/                   # superseded artifacts, kept for the record

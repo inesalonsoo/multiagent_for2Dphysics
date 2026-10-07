@@ -7,8 +7,8 @@ expression or an exact numerical solution of the analytical problem (a root
 find, a quadrature, or an eigenvalue of the discretized generator).
 
 The reference rate is exact_relaxation_rate_0d(). The Eyring-Kramers formula
-is kept as its large-beta limit, not as the oracle: at beta = 3-7 it is 6-10%
-too high.
+is kept as its large-beta limit, not as the oracle: at beta = 3-7, twice it
+is 7-11% above the exact relaxation rate.
 """
 
 import numpy as np
@@ -53,8 +53,8 @@ def eyring_kramers_rate_0d(beta, A=1.0):
     - barrier height: deltaV = V(0) - V(+-1) = A.
 
     This is an asymptotic formula, not an exact one. Its relative error is
-    of order 1/beta: the exact rate is 0.90, 0.92 and 0.94 times this value
-    at beta = 3, 5 and 7. Use exact_relaxation_rate_0d() as the reference;
+    of order 1/beta: the exact one-way rate (lambda_2 / 2) is 0.90, 0.92
+    and 0.94 times this value at beta = 3, 5 and 7. Use exact_relaxation_rate_0d() as the reference;
     this function is kept as the beta -> infinity cross-check.
 
     Parameters
@@ -94,7 +94,8 @@ def exact_relaxation_rate_0d(beta, A=1.0, n_cells=4000):
     Method: a finite-volume (SQRA) discretization on a uniform grid. The
     discretized generator is reversible, so it can be symmetrized into a
     tridiagonal matrix and its two smallest eigenvalues computed directly.
-    With 4000 cells, lambda_2 is converged to about 1e-5 (relative).
+    With 4000 cells, lambda_2 is converged to 1e-5 to 1e-4 (relative),
+    worse at higher beta.
     Valid for 1 <= beta*A and beta <= MAX_BETA_FOR_EXACT_RATE.
     """
     if beta > MAX_BETA_FOR_EXACT_RATE:
@@ -161,7 +162,8 @@ def find_well_positions(A=1.0, b=0.0):
 
     This is exact up to solver tolerance. For b=0 it returns (-1.0, 1.0).
     For 0 < |b| < 8*A/(3*sqrt(3)) (about 1.54*A, beyond which one well
-    disappears), both wells shift by a small, equal amount.
+    disappears), both wells shift by nearly the same small amount (equal
+    to first order in b).
 
     Parameters
     ----------

@@ -1,21 +1,17 @@
 """
 Build presentation/presentation_deck.html from presentation/deck_template.html
-by embedding the two current result figures (results/arrhenius.png and
-results/phase3_convergence_study.png) as base64 data URIs.
+by embedding the two current figures (results/arrhenius.png and
+results/phase3_rescore.png) as base64 data URIs.
 
-Why this exists as a script rather than a one-off: the deck template keeps
-two placeholder tokens (%%ARRHENIUS_B64%% and %%PHASE3_B64%%) instead of the
-images themselves, so the source file stays small, human-readable, and easy
-to diff in git. Whenever either PNG in results/ is regenerated (e.g. after
-re-running scripts/run_phase2_uq.py), re-run this script to refresh the
-deck's embedded copies -- nothing else needs to change by hand.
+The template keeps placeholders (%%ARRHENIUS_B64%%, %%PHASE3_B64%%) instead of
+the images, so it stays small and readable in git. Re-run this script after
+regenerating either figure.
 
-Usage (from anywhere; paths below are relative to this file, not to cwd):
+Usage (paths are relative to this file, not the working directory):
     python presentation/build_deck.py
 
-Output: presentation/presentation_deck.html -- this is the file to hand to
-the Artifact tool (or open directly in a browser; it is fully self-contained,
-no external requests).
+Output: presentation/presentation_deck.html, fully self-contained (no
+external requests).
 """
 
 import base64
@@ -29,7 +25,7 @@ TEMPLATE_PATH = PRESENTATION_DIR / "deck_template.html"
 OUTPUT_PATH = PRESENTATION_DIR / "presentation_deck.html"
 
 ARRHENIUS_PNG = RESULTS_DIR / "arrhenius.png"
-PHASE3_PNG = RESULTS_DIR / "phase3_convergence_study.png"
+PHASE3_PNG = RESULTS_DIR / "phase3_rescore.png"
 
 
 def b64_of(path: Path) -> str:

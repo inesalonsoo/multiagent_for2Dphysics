@@ -24,15 +24,13 @@ def run_trajectory_0d(n_steps, seed, dt=0.01, beta=5.0, A=1.0, b=0.0, x0=1.0):
     Named terms:
     - x(t): the scalar particle position (the 0-D analogue of phi in the
       2D field).
-    - V'(x): potential_derivative(x, A, b) from physics/potential.py --
-      pushes x toward the nearest well. Reusing this function (rather than
-      re-deriving the formula here) keeps the 0-D and 2D engines from ever
-      falling out of sync with each other.
-    - beta: inverse temperature. Default 5.0, matching the Phase 1 baseline
-      in PROJECT_STATE.md Sec 4.
-    - sqrt(2/beta): the noise prefactor. This is the gamma=1 special case
-      of the 2D field's sqrt(2*gamma/beta) -- there is no spatial mobility
-      to speak of for a single point, so gamma is implicitly 1.
+    - V'(x): potential_derivative(x, A, b) from physics/potential.py, which
+      pushes x toward the nearest well. Sharing it keeps the 0-D and 2D
+      engines consistent.
+    - beta: inverse temperature (higher means colder, so rarer hops).
+      Default 5.0, the Phase 1 reference.
+    - sqrt(2/beta): the strength of the random thermal kicks (the 2D
+      field's noise with gamma = 1; a single point has no spatial coupling).
 
     Parameters
     ----------
@@ -42,9 +40,9 @@ def run_trajectory_0d(n_steps, seed, dt=0.01, beta=5.0, A=1.0, b=0.0, x0=1.0):
         Seed for the random number generator driving the thermal noise,
         so a run is exactly reproducible.
     dt : float, optional
-        Fixed Euler-Maruyama time step. Default 0.01. There is no CFL-style
-        stability bound here (no spatial diffusion to destabilize) -- the
-        only requirement is resolving the fastest relaxation timescale,
+        Fixed Euler-Maruyama time step. Default 0.01. With no spatial
+        coupling there is no stability limit; the step only has to resolve
+        the fastest relaxation time,
         1/V''(well) = 1/(8*A) = 0.125 for A=1, which dt=0.01 resolves with
         a comfortable margin (12-13 steps per relaxation time). The finite
         step still biases the dynamics: at dt=0.01 the simulated chain
@@ -68,9 +66,7 @@ def run_trajectory_0d(n_steps, seed, dt=0.01, beta=5.0, A=1.0, b=0.0, x0=1.0):
         the convention used by physics.simulate.run_trajectory.
     """
     rng = np.random.default_rng(seed)
-    # Precompute every random draw at once (vectorized) instead of drawing
-    # one Gaussian per step in the loop below -- much faster than repeated
-    # small calls to the random number generator.
+    # Draw all random kicks at once: much faster than one call per step
     noise_prefactor = np.sqrt(2.0 / beta)
     random_draws = noise_prefactor * np.sqrt(dt) * rng.standard_normal(n_steps)
 

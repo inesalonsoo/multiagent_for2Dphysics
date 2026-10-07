@@ -1,13 +1,11 @@
 """
-Known-answer tests for agents/validator.py.
+Tests for agents/validator.py, with fake LLMs.
 
-The property that matters most: the hard Boolean checks feeding
-ValidatorDecision are computed in deterministic Python, independently of
-the LLM's opinion -- this is the validator-level proof that complements
-agents/schemas.py's schema-level guarantee (a computed-False check must
-survive even LLM enthusiasm). Also tested: the three-way ill-posed /
-valid-but-wrong / valid-and-right branch, the rate tolerance derived from
-Phase 1's replica spread, and the Phase 4 placeholder.
+Most important: the physics checks are computed in code, independently
+of the LLM, so a failed check survives even an enthusiastic LLM. Also
+tested: the three outcomes (ill-posed, valid but wrong, valid and right),
+the rate tolerance from Phase 1's replica spread, and the Phase 4
+placeholder.
 """
 
 import os
@@ -89,7 +87,7 @@ def test_llm_enthusiasm_cannot_flip_a_computed_false_check():
 
 def test_ill_posed_result_is_rejected_mechanically_without_calling_the_llm():
     """Outcome 1 of 3: ill-posed. Checked first, no physics checks
-    computed, and the LLM is never even called -- there's no physics
+    computed, and the LLM is never called: there is no physics
     pattern for it to interpret."""
     ill_posed_result = PipelineResult(
         config=_CONFIG, error="msm_lagtime (500) >= trajectory_length_frames (100)",
@@ -108,7 +106,7 @@ def test_ill_posed_result_is_rejected_mechanically_without_calling_the_llm():
 def test_ill_posedness_overrides_even_suspiciously_passing_measurement_fields():
     """Defensive check: is_ill_posed must win even if a (shouldn't-happen)
     PipelineResult has both `error` set AND measurement fields that look
-    fine -- ill-posedness is checked first, unconditionally."""
+    fine: ill-posedness is checked first, unconditionally."""
     contradictory_result = PipelineResult(
         config=_CONFIG, error="deeptime rejected a degenerate count matrix",
         timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE,
@@ -124,7 +122,7 @@ def test_ill_posedness_overrides_even_suspiciously_passing_measurement_fields():
 
 def test_valid_but_wrong_result_is_rejected_with_llm_interpretation():
     """Outcome 2 of 3: valid config, failed physics. LLM IS called here,
-    to interpret which check failed -- unlike the ill-posed branch."""
+    to interpret which check failed (unlike the ill-posed branch)."""
     wrong_rate_result = _well_posed_result(
         timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE * 5.0
     )
@@ -143,7 +141,7 @@ def test_valid_but_wrong_result_is_rejected_with_llm_interpretation():
 
 
 def test_valid_and_right_result_is_accepted():
-    """Outcome 3 of 3: valid config, both physics checks pass -- ACCEPT,
+    """Outcome 3 of 3: valid config, both physics checks pass: ACCEPT,
     mechanically, regardless of what the LLM adds."""
     correct_result = _well_posed_result(
         timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE
@@ -180,8 +178,8 @@ def test_rate_tolerance_boundary_is_respected():
 
 
 def test_boltzmann_socket_is_dormant_not_silently_wrong():
-    """The Phase 4 socket must fail loudly if invoked today, not return a
-    fabricated-looking answer -- see the function's docstring for why."""
+    """The Phase 4 placeholder must fail loudly if called today, not
+    return a plausible-looking answer."""
     dummy_result = _well_posed_result(timescale_separation=40.0, relaxation_rate_mean=_ANALYTICAL_RATE)
     with pytest.raises(NotImplementedError):
         _check_boltzmann_ratio_matches_analytical(dummy_result, REFERENCE_BETA, tilt_b=0.1, tolerance=0.1)

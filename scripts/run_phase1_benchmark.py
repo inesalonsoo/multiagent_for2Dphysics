@@ -13,12 +13,14 @@ large-beta limit.
 Gates, fixed before running:
 1. Two metastable states in every resolved replica: t_2 / t_3 above
    MIN_TIMESCALE_SEPARATION and Chapman-Kolmogorov error below MAX_CK_ERROR.
-2. At every resolved beta, the replica mean rate agrees with the exact chain
-   rate at 99% confidence (Student t, N_REPLICAS - 1 degrees of freedom).
+2. At every resolved beta, the replica mean rate is consistent with the
+   exact chain rate: their difference lies within the two-sided 99%
+   Student t interval (N_REPLICAS - 1 degrees of freedom).
 A replica is unresolved when its trajectory spans fewer than 20 slowest
 timescales (pipeline.msm.choose_lagtime returns None).
 
-Run from the project root: python -m scripts.run_phase1_benchmark (~30 min).
+Run from the project root: python -m scripts.run_phase1_benchmark (about
+5 hours, mostly the Bayesian intervals at long lags).
 """
 
 import numpy as np

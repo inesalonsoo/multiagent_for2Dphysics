@@ -1,15 +1,10 @@
 """
-Turn a 0-D trajectory into an MSM-ready feature array.
+Turn a 0-D trajectory into the array shape the MSM tools expect.
 
-In 0-D, the particle's position x(t) already IS the reaction coordinate:
-there is no higher-dimensional field to project down, and no choice of
-order parameter to argue about (the 2D field's Phase 4 pipeline has to
-pick one -- the spatial-mean order parameter -- as a stand-in for a true
-reaction coordinate it does not have direct access to). Here the state
-variable and the reaction coordinate coincide exactly, so "feature
-engineering" is just a reshape. This is exactly why the 0-D benchmark is
-clean: there is no feature-choice ambiguity to introduce error before the
-MSM stage even begins.
+In 0-D the particle's position x(t) is already the natural coordinate for
+the hop between valleys, so no feature choice is needed: this is just a
+reshape. (The 2D field will need a summary number per frame, such as the
+spatial average of phi.)
 """
 
 import numpy as np

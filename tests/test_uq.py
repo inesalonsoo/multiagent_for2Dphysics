@@ -10,7 +10,7 @@ import numpy as np
 from physics.simulate_0d import run_trajectory_0d
 from pipeline.features import compute_features
 from pipeline.cluster import cluster_trajectory
-from pipeline.uq import compute_rate_credible_interval
+from pipeline.uq import compute_rate_credible_interval, rate_credible_interval, sample_rate_posterior
 
 DT = 0.01
 LAGTIME = 20
@@ -54,14 +54,13 @@ def test_credible_interval_scales_down_with_more_data():
 
 
 def test_wider_confidence_gives_wider_interval():
-    """A 95% interval must be at least as wide as a 90% interval on the same data."""
-    discrete_trajectory = _sample_discrete_trajectory()
+    """
+    On the same posterior samples, a 95% interval must contain the 90% one.
+    (Comparing two separate random draws would make this test flaky.)
+    """
+    posterior = sample_rate_posterior(_sample_discrete_trajectory(), lagtime=LAGTIME)
 
-    _, lower_90, upper_90 = compute_rate_credible_interval(
-        discrete_trajectory, lagtime=LAGTIME, dt=DT, confidence=0.90,
-    )
-    _, lower_95, upper_95 = compute_rate_credible_interval(
-        discrete_trajectory, lagtime=LAGTIME, dt=DT, confidence=0.95,
-    )
+    _, lower_90, upper_90 = rate_credible_interval(posterior, dt=DT, confidence=0.90)
+    _, lower_95, upper_95 = rate_credible_interval(posterior, dt=DT, confidence=0.95)
 
-    assert (upper_95 - lower_95) >= (upper_90 - lower_90)
+    assert lower_95 <= lower_90 and upper_90 <= upper_95

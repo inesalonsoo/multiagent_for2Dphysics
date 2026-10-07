@@ -1,4 +1,4 @@
-# Secrets -- never commit
+# Secrets: never commit
 .env
 .env.*
 !.env.example
@@ -9,17 +9,16 @@ __pycache__/
 .pytest_cache/
 .venv/
 
-# Data (raw trajectories, gitignored per CLAUDE.md -- streamed/regenerated, not tracked)
+# Data: raw trajectories are regenerated, not tracked
 data/*
 !data/.gitkeep
 
-# Reference papers (third-party copyrighted PDFs -- cite the arXiv URL in
+# Reference papers (third-party copyrighted PDFs: cite the arXiv URL in
 # docs instead of redistributing a copy; kept locally, never tracked)
 *.pdf
 
-# Lemma workspace export (external tool's audit/proof artifacts, ~2 MB;
-# kept locally for reference, its merged results are recorded in
-# PROJECT_STATE.md §9, 2026-09-25 entry)
+# Lemma workspace export (an external tool's working files, ~2 MB), kept
+# locally; what was merged from it is recorded in docs/HISTORY.md
 lemma-workspace-files.zip
 
 # OS

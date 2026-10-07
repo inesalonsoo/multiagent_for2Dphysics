@@ -57,10 +57,10 @@ def test_chosen_lag_is_a_tenth_of_slowest_timescale():
 
 def test_rate_at_chosen_lag_matches_exact_chain_rate():
     """
-    At beta=3, a 1.5M-step trajectory spans about 1200 slowest timescales,
-    so the rate's statistical error is about 3%. At the chosen lag the MSM
+    At beta=3, a 1.5M-step trajectory sees about 600 barrier crossings, so
+    the rate's statistical error is about 4%. At the chosen lag the MSM
     rate must match the exact rate of the simulated Euler-Maruyama chain
-    within 6% (two standard errors).
+    within 6% (the trajectory is seeded, so the test is deterministic).
     """
     discrete_trajectory = _discrete_trajectory(beta=3.0, n_steps=1_500_000, seed=11)
     lagtime = choose_lagtime(discrete_trajectory)

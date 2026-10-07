@@ -1,31 +1,20 @@
 """
-The double-well potential and its derivative, with an optional linear
-tilt that breaks the symmetry between the two wells.
+The double-well landscape and its slope, with an optional tilt.
 
     V(phi) = A * (phi**2 - 1)**2 + b * phi
 
-- With b = 0 (the default), this is the classic symmetric double-well
-  (Mexican hat cross-section): two minima at phi = -1 and phi = +1,
-  both with V = 0, separated by a barrier of height A at phi = 0.
-- With b != 0, the extra b*phi term tilts the landscape: it lowers V on
-  the phi < 0 side and raises it on the phi > 0 side (for b > 0), so the
-  two minima are no longer equally deep. This is deliberate: a purely
-  symmetric double well has NO bulk free-energy difference between the
-  two wells, so a droplet of one phase nucleated inside the other has no
-  thermodynamic driving force to grow -- switching is governed only by
-  surface tension/curvature (much more strongly suppressed than a tilted
-  system, see PROJECT_STATE.md Sec. 9). Adding a modest tilt b gives the
-  two wells different depths, exactly the situation that makes moire
-  stacking domains (which this project's benchmark ultimately targets)
-  physically interesting, so this also folds the Phase-4 "moire tilt"
-  idea into the core physics rather than treating it as a separate demo.
-- The tilt also shifts the well positions slightly away from phi = +-1.
-  physics/known_answers.py gives the exact positions and the energy
-  difference between the minima (about 2*b for modest tilts).
+- With b = 0 (the default) the landscape is symmetric: two valleys at
+  phi = -1 and phi = +1, both at V = 0, separated by a hill of height A at
+  phi = 0.
+- A tilt b != 0 lowers one valley and raises the other (for b > 0 the
+  phi > 0 valley sits higher), so the system prefers one of them. Phase 4
+  uses this as a simple stand-in for symmetry breaking.
+- The tilt also shifts the valleys slightly away from phi = +-1.
+  physics/known_answers.py gives their exact positions and the energy
+  difference between them (about 2*b for small tilts).
 
-The derivative dV/dphi is the force (well, minus the force) that drives
-the deterministic part of the Allen-Cahn dynamics: phi is pushed
-"downhill" on this landscape, i.e. in the direction of -dV/dphi.
+The slope dV/dphi is minus the force: the dynamics push phi downhill,
+in the direction of -dV/dphi.
 """
 
 import numpy as np
@@ -48,7 +37,7 @@ def potential(phi, A=1.0, b=0.0):
     b : float, optional
         Tilt strength. b = 0 (default) recovers the symmetric double
         well. b != 0 breaks the phi -> -phi symmetry, making one well
-        deeper than the other -- see the module docstring.
+        deeper than the other (see the module docstring).
 
     Returns
     -------
@@ -90,7 +79,7 @@ def potential_derivative(phi, A=1.0, b=0.0):
         The slope of the potential at each input phi, same shape as phi.
         With b = 0 this is zero exactly at phi = -1, 0, +1. With b != 0
         the three stationary points shift slightly away from these
-        values -- see physics/known_answers.py for their exact locations.
+        values (physics/known_answers.py finds them exactly).
     """
     # Chain-rule derivative of A * (phi**2 - 1)**2, plus the constant
     # slope b contributed by the linear tilt term (d/dphi of b*phi = b).

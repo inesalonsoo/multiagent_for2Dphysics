@@ -39,9 +39,8 @@ from pipeline.msm import MIN_TIMESCALE_SEPARATION
 
 logger = logging.getLogger(__name__)
 
-VALIDATOR_MODEL = "anthropic:claude-sonnet-5"  # PROJECT_STATE.md Sec 4 -- pydantic-ai
-# requires the explicit "anthropic:" provider prefix; a bare "claude-sonnet-5" fails
-# infer_model() with "Unknown model" (caught interactively before any real API call).
+# pydantic-ai needs the "anthropic:" prefix; a bare model name fails with "Unknown model"
+VALIDATOR_MODEL = "anthropic:claude-sonnet-5"
 REFERENCE_BETA = 5.0  # the loop's reference trajectory (agents/loop.py)
 REFERENCE_DT = 0.01  # its time step; must equal agents/loop.py DT (tested)
 PHASE1_RESULTS_PATH = "results/arrhenius_sweep_raw.npz"
@@ -70,14 +69,10 @@ write:
 
 class ValidatorLLMInterpretation(BaseModel):
     """
-    The Validator LLM's own structured output -- deliberately NARROWER
-    than ValidatorDecision (agents/schemas.py). It does NOT include
-    two_states_recovered, rate_matches_analytical, or is_ill_posed: those
-    are computed in plain Python (see _compute_physics_checks below) and
-    never handed to the LLM to decide. This model exists only so the LLM
-    call has a typed output at all; validate_pipeline_result() below
-    combines it with the independently-computed hard checks to build the
-    real ValidatorDecision.
+    What the Validator LLM itself returns: a verdict, its reasoning and a
+    suggestion. Deliberately narrower than ValidatorDecision: the physics
+    checks are computed in code (_compute_physics_checks) and never asked
+    of the LLM. validate_pipeline_result() combines the two.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -89,10 +84,8 @@ class ValidatorLLMInterpretation(BaseModel):
 
 def build_validator_agent(model: Any = None) -> Agent[None, ValidatorLLMInterpretation]:
     """
-    Construct the Validator's pydantic-ai Agent. `model` defaults to this
-    project's approved agent model string; tests pass a
-    pydantic_ai.models.function.FunctionModel here instead, so nothing in
-    tests/test_validator.py makes a real API call.
+    Create the Validator's LLM agent. Tests pass a scripted fake `model`
+    so they never call a real API.
     """
     return Agent(
         model or VALIDATOR_MODEL,
@@ -107,9 +100,11 @@ def load_rate_tolerance(reference_beta: float = REFERENCE_BETA) -> float:
     replica-to-replica relative spread of Phase 1's rates at reference_beta.
 
     One trajectory's rate scatters around the exact value by about that
-    spread, so a correct pipeline lands within 3 sigma almost always. The
-    spread measures precision (how much independent trajectories disagree);
-    it never uses the deviation from the exact rate. Call once, before the
+    spread. The spread measures precision (how much independent
+    trajectories disagree); it never uses the deviation from the exact
+    rate. It comes from only 6 replicas, so it is itself uncertain: at
+    beta = 5 it is 1.87%, while the trend over all beta (about
+    1/sqrt(number of barrier crossings)) suggests about 3.4%. Call once, before the
     loop. Requires Phase 1's results (results/arrhenius_sweep_raw.npz).
     """
     phase1 = np.load(PHASE1_RESULTS_PATH)
@@ -157,9 +152,8 @@ def _check_boltzmann_ratio_matches_analytical(result: PipelineResult, reference_
 
 def _build_interpretation_prompt(result: PipelineResult, two_states_recovered: bool,
                                    rate_matches_analytical: bool) -> str:
-    """Assemble the prompt for a WELL-POSED result: the already-computed
-    checks first (framed as fixed, not up for debate), then the raw
-    measurements for context."""
+    """Prompt for a result that ran: the checks first, stated as fixed,
+    then the measurements for context."""
     return (
         "These physics checks have ALREADY BEEN COMPUTED in Python and cannot be "
         "changed by you -- interpret them, do not recompute them:\n"
@@ -181,14 +175,13 @@ def validate_pipeline_result(
     reference_beta: float = REFERENCE_BETA,
 ) -> ValidatorDecision:
     """
-    The Validator's single step: check ill-posedness FIRST; if the
-    config never validly ran, reject mechanically without computing
-    meaningless physics checks or calling the LLM at all. Otherwise,
-    compute the hard physics checks in Python, then ask the LLM to
-    interpret (never decide) them.
+    The Validator's single step. A config that could not run is rejected
+    straight away, with no physics checks and no LLM call. Otherwise the
+    physics checks are computed in code and the LLM is asked only to
+    interpret them.
 
-    `rate_tolerance` must come from load_rate_tolerance(), called once
-    up front -- see that function's docstring.
+    `rate_tolerance` comes from load_rate_tolerance(), called once before
+    the loop.
     """
     if result.error is not None:
         return ValidatorDecision(

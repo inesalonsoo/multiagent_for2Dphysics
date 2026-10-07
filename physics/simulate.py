@@ -1,31 +1,17 @@
 """
-The stochastic Allen-Cahn integrator: turns the double-well potential from
-physics/potential.py into a noisy, spatially extended trajectory on a 2D
-grid, using py-pde.
+The 2D field version of the double well (Phase 4, not yet used for
+results): every point of a 2D grid holds a value phi that feels the
+double-well landscape, is coupled to its neighbors, and is shaken by
+thermal noise. Integrated with py-pde.
 
-Numerics note (read this before changing solver/noise code below):
-CLAUDE.md/PROJECT_STATE.md's tech-stack notes mention py-pde's adaptive
-(RK45) integrator and a class called "NoiseTerm". Neither exists in the
-form described, as verified against the installed py-pde 0.57.0 source:
-  1. There is no "NoiseTerm" class. Thermal noise is added through the
-     `noise=` argument of pde.PDE, which is documented (and confirmed in
-     pde/pdes/base.py) to be the VARIANCE of the additive noise, not its
-     amplitude. See the comment on noise_variance in run_trajectory().
-  2. py-pde's adaptive solvers (ExplicitSolver/EulerSolver with
-     adaptive=True, and the RK45-based ScipySolver) both explicitly raise
-     a RuntimeError when the PDE has noise ("Cannot use adaptive stepping
-     with stochastic equation" / "... does not support stochastic
-     equations"). There is no solver in this py-pde version that combines
-     adaptive time-stepping with noise. This was confirmed with the human
-     author before writing this module; see PROJECT_STATE.md.
-We therefore use a fixed time step (default dt=0.005, see the CFL note
-in _check_cfl_condition()) and py-pde's explicit Euler-Maruyama solver
-(solver="euler"). py-pde also ships a MilsteinSolver for SDEs, but its
-extra correction terms only matter for MULTIPLICATIVE noise (amplitude
-depends on phi); our noise_variance = 2*gamma/beta is a constant, so
-Milstein reduces exactly to Euler-Maruyama here and just adds unneeded
-work (py-pde even warns about this for additive noise) -- hence "euler",
-not "milstein".
+Numerics (checked against the installed py-pde 0.57.0):
+- Noise is added through the `noise=` argument of pde.PDE, which takes
+  the VARIANCE of the noise, not its amplitude (see noise_variance in
+  run_trajectory()).
+- No py-pde solver allows adaptive time steps with noise, so a fixed step
+  is used (default dt=0.005; see _check_cfl_condition()).
+- The solver is explicit Euler-Maruyama ("euler"). Milstein would only
+  differ for noise whose strength depends on phi; ours is constant.
 """
 
 import numpy as np
@@ -33,9 +19,9 @@ import pde
 
 from physics.potential import potential_derivative
 
-# Fixed by the project's physics ground truth (PROJECT_STATE.md Sec. 4).
-# These are the human PI's decisions, not free parameters -- per CLAUDE.md
-# HARD BOUNDARY 2, they are not exposed as function arguments.
+# Physics parameters are the human's decisions (CLAUDE.md, hard boundary 2),
+# so they are not function arguments. Under review for Phase 4: see
+# PROJECT_STATE.md (the recorded plan is L = 2.5, not 10).
 GRID_SHAPE = (32, 32)
 DOMAIN_SIZE = (10.0, 10.0)
 
@@ -153,12 +139,8 @@ def run_trajectory(n_steps, seed, dt=0.005, gamma=1.0, beta=5.0, A=1.0, b=0.0,
         d(phi)/dt = gamma * laplacian(phi) - dV/dphi(phi)
                     + sqrt(2*gamma/beta) * eta(r, t)
 
-    where dV/dphi is now taken from the (optionally tilted) potential
-    V(phi) = A*(phi**2-1)**2 + b*phi -- see physics/potential.py and
-    physics/known_answers.py for why the tilt b was added: a purely
-    symmetric double well (b=0) has no bulk driving force for a
-    nucleated droplet to grow, which made switching far rarer than a
-    naive Kramers estimate predicted (see PROJECT_STATE.md Sec. 9).
+    where dV/dphi comes from the (optionally tilted) potential
+    V(phi) = A*(phi**2-1)**2 + b*phi (physics/potential.py).
 
     on the 32x32, 10x10, periodic grid defined by GRID_SHAPE/DOMAIN_SIZE,
     using py-pde's fixed-step explicit Euler-Maruyama solver
@@ -181,9 +163,10 @@ def run_trajectory(n_steps, seed, dt=0.005, gamma=1.0, beta=5.0, A=1.0, b=0.0,
     - b: tilt strength (see physics/potential.py's module docstring).
       Default 0.0 (symmetric well). b != 0 makes one minimum lower than
       the other by about 2*b (physics/known_answers.py).
-    - beta: inverse temperature, beta = 1/(k_B T). Default 5.0, i.e.
-      kT = 0.2 and barrier/kT = 5 (switching between wells is rare but
-      observable, per PROJECT_STATE.md Sec. 4).
+    - beta: inverse temperature, beta = 1/(k_B T). Default 5.0. For a
+      single point the barrier is A, but for the whole field it grows
+      with the area (about L**2 * A for a uniform flip), so switching
+      is far rarer than beta * A suggests.
     - eta(r, t): Gaussian white noise, delta-correlated in space and time
       (thermal fluctuations).
     - sqrt(2*gamma/beta): the noise prefactor. Because gamma multiplies
@@ -223,7 +206,7 @@ def run_trajectory(n_steps, seed, dt=0.005, gamma=1.0, beta=5.0, A=1.0, b=0.0,
     include_potential : bool, optional
         If False, drops the -dV/dphi(phi) term, leaving pure diffusion +
         noise. Default True. Only meant for the noise-amplitude sanity
-        check in tests/test_simulate.py -- see _build_equation().
+        check in tests/test_simulate.py (see _build_equation()).
 
     Returns
     -------

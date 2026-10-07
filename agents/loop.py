@@ -1,15 +1,10 @@
 """
-agents/loop.py (PROJECT_STATE.md Sec 6/7, module 3.6) -- deliberately
-THIN. Builds the fixed reference context (trajectory, search bounds, rate
-tolerance) a real loop run needs, instantiates the two real LLM-backed
-agents, and hands control to agents.orchestrator.
-run_agentic_loop_with_real_agents(); writes the resulting AgenticRun to
-disk as the JSON State Ledger. All the actual control-flow logic
-(routing, stopping) lives in agents/orchestrator.py (module 3.5); all the
-actual judgment lives in agents/optimizer.py and agents/validator.py
-(modules 3.3/3.4). This module does none of that -- it only wires the
-pieces together and persists the result, matching PROJECT_STATE.md
-Sec 6's "now THIN" description.
+Entry point for one run of the agentic loop. Deliberately thin: it builds
+the fixed inputs (a reference trajectory, the search space, the rate
+tolerance), creates the two LLM agents, hands control to
+agents/orchestrator.py, and saves the result as a JSON ledger (a complete
+record of every proposal and verdict). The decisions themselves live in
+optimizer.py, validator.py and orchestrator.py.
 """
 
 from pathlib import Path
@@ -30,15 +25,12 @@ MAX_N_CLUSTERS = 100
 
 def build_reference_context(seed: int = 7):
     """
-    Build the fixed pieces every real loop run needs: a reference
-    trajectory at REFERENCE_BETA, its search bounds, and the Validator's
-    rate tolerance. Deliberately separated from
-    run_one_real_loop() below so a caller running MULTIPLE repetitions
-    (scripts/run_phase3_agentic.py's convergence study) can build this
-    ONCE and reuse the SAME trajectory across every repetition --
-    otherwise trajectory-level sampling noise would become a second,
-    confounding source of run-to-run variation, muddying the question
-    the study actually asks (does the AGENTS' search vary?).
+    Build the fixed inputs of a run: the reference trajectory at
+    REFERENCE_BETA, its search bounds, and the Validator's rate tolerance.
+
+    Kept separate from run_one_real_loop() so a multi-run study can build
+    them once and give every run the same trajectory. Then any difference
+    between runs comes from the agents, not from simulation noise.
 
     Returns
     -------
@@ -61,14 +53,10 @@ def run_one_real_loop(
     optimizer_agent: Optional[Any] = None, validator_agent: Optional[Any] = None,
 ) -> AgenticRun:
     """
-    Run one complete agentic loop via agents.orchestrator.
-    run_agentic_loop_with_real_agents(). optimizer_agent/validator_agent
-    default to the real, production pydantic-ai Agents (built here, using
-    agents/optimizer.py and agents/validator.py's default model string,
-    PROJECT_STATE.md Sec 4) -- MAKING REAL API CALLS. Tests pass
-    FunctionModel-backed fakes instead (see tests/test_loop.py), so this
-    function itself stays testable without touching a real API, even
-    though its default, production behavior does.
+    Run one complete loop through the Orchestrator.
+
+    By default the agents are the real LLM-backed ones, so this makes real
+    API calls. Tests pass scripted fake agents instead (tests/test_loop.py).
     """
     optimizer_agent = optimizer_agent or build_optimizer_agent()
     validator_agent = validator_agent or build_validator_agent()
@@ -80,19 +68,13 @@ def run_one_real_loop(
 
 
 def main():
-    """Single real run, written to results/ledger.json -- this module's
-    literal roadmap description (PROJECT_STATE.md Sec 6). For the
-    repeated-run convergence-robustness study, see
-    scripts/run_phase3_agentic.py instead, which reuses the functions
-    above rather than duplicating this wiring."""
+    """One real run, saved to results/ledger.json. For the multi-run study
+    see scripts/run_phase3_agentic.py, which reuses these functions."""
     trajectory, search_bounds, rate_tolerance = build_reference_context()
     run = run_one_real_loop(trajectory, search_bounds, rate_tolerance)
 
-    # encoding="utf-8" is required, not optional: Path.write_text() defaults to
-    # the OS locale codec (cp1252 on this Windows setup), which cannot encode
-    # characters an LLM's own reasoning text may contain (e.g. U+2248 "almost
-    # equal to" -- caught when the real convergence study crashed on exactly
-    # this mid-run; see PROJECT_STATE.md Sec 9).
+    # UTF-8 explicitly: Windows' default encoding cannot write some characters
+    # that appear in LLM text (such as the "almost equal" sign).
     Path("results/ledger.json").write_text(run.model_dump_json(indent=2), encoding="utf-8")
     print(f"wrote results/ledger.json -- {len(run.entries)} iterations, stop_reason={run.stop_reason}")
 

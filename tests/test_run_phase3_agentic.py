@@ -1,12 +1,7 @@
 """
-Known-answer tests for scripts/run_phase3_agentic.py.
-
-The property that matters here, per the PI's explicit instruction before
-spending more real API budget: resumability. A script crash partway
-through a real, billed study must not force re-paying for repetitions
-that already completed successfully. This is tested deliberately, with
-fakes, in a temp directory -- not left to be discovered under a real
-crash a second time.
+Tests for scripts/run_phase3_agentic.py, with fake agents in a temporary
+directory. The key property is resumability: if a paid study crashes
+partway, finished runs must not be paid for again.
 """
 
 import json
@@ -28,9 +23,8 @@ _LOOSE_TOLERANCE = 0.5  # hermetic: no dependency on cached Phase 2 files for th
 
 
 def _accepting_agents(call_counter):
-    """Fake Optimizer + Validator that always propose/accept the same
-    well-posed config, counting how many times the Optimizer is actually
-    invoked -- the resumability signal this test checks."""
+    """Fake Optimizer and Validator that always propose and accept the same
+    config, counting Optimizer calls (the signal the test checks)."""
     def optimizer_fake_llm(messages, info: AgentInfo) -> ModelResponse:
         call_counter["n"] += 1
         tool_name = info.output_tools[0].name
@@ -68,12 +62,9 @@ def test_run_all_repetitions_persists_every_run(tmp_path):
 
 def test_run_all_repetitions_resumes_without_recalling_the_optimizer_for_completed_runs(tmp_path):
     """
-    The property that matters: a run_NN_ledger.json that already exists
-    (and is non-empty) must be loaded and reused, NOT regenerated -- the
-    Optimizer must not be called again for it. Pre-populates run_01 (a
-    real, valid ledger from a first pass) and leaves run_02 as a 0-byte
-    file (simulating the exact mid-write crash the real study hit), then
-    confirms only run_02 triggers a fresh call.
+    An existing, non-empty run_NN_ledger.json must be reused, with no new
+    Optimizer call. Run 1 is a complete ledger; run 2 is an empty file
+    (as after a crash mid-write), so only run 2 should be redone.
     """
     call_counter = {"n": 0}
     optimizer_agent, validator_agent = _accepting_agents(call_counter)
@@ -96,8 +87,7 @@ def test_run_all_repetitions_resumes_without_recalling_the_optimizer_for_complet
         optimizer_agent=optimizer_agent, validator_agent=validator_agent,
     )
 
-    # Only run 2 should have triggered a new Optimizer call -- run 1 was
-    # already complete and must have been loaded from disk, not re-run.
+    # Only run 2 needed a new Optimizer call; run 1 was loaded from disk
     assert call_counter["n"] == 2
     assert len(second_pass_runs) == 2
     assert second_pass_runs[0] == completed_run_01

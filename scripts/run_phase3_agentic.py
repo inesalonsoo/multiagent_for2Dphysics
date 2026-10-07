@@ -35,8 +35,7 @@ from agents.schemas import AgenticRun
 from agents.validator import REFERENCE_BETA, reference_rate
 
 N_REPETITIONS = 4
-# note. The minimum that demonstrates the four qualitative properties the claim needs, not a
-# stats-gathering run; run_01 is already reused from a real dry run under this same design.
+# Four runs show how the loop behaves; they are too few to measure a failure rate.
 LEDGER_DIR = Path("results/phase3_convergence_study")
 
 
@@ -44,29 +43,16 @@ def run_all_repetitions(n_repetitions=N_REPETITIONS, ledger_dir=None,
                          trajectory=None, search_bounds=None, rate_tolerance=None,
                          optimizer_agent=None, validator_agent=None):
     """
-    Run n_repetitions independent real agentic loops on ONE fixed
-    reference trajectory (built once here, reused for every repetition --
-    see agents.loop.build_reference_context()'s docstring for why this
-    isolates the LLM's own reasoning as the sole source of run-to-run
-    variation). Persists each run's ledger to disk immediately after it
-    completes, before any downstream analysis.
+    Run n_repetitions real agentic loops on one shared reference trajectory
+    (so differences between runs come from the agents, not from noise),
+    saving each run's ledger as soon as it finishes.
 
-    RESUMABLE: if run_NN_ledger.json already exists (and is non-empty --
-    a zero-byte file means a previous attempt crashed mid-write, e.g. the
-    UnicodeEncodeError this function used to hit before encoding="utf-8"
-    was added, PROJECT_STATE.md Sec 9) it is loaded and reused instead of
-    spending another real API call redoing that repetition. This matters
-    because each repetition is real, billed API usage -- a script crash
-    on repetition 4 must not force re-paying for repetitions 1-3. This
-    property is verified deterministically in tests/
-    test_run_phase3_agentic.py with fakes, not left to be discovered under
-    a real crash a second time.
+    Resumable: an existing, non-empty run_NN_ledger.json is reused instead
+    of paying for that run again (an empty file means an earlier crash
+    mid-write). tests/test_run_phase3_agentic.py checks this with fakes.
 
-    ledger_dir/trajectory/search_bounds/rate_tolerance/optimizer_agent/
-    validator_agent all default to the real, production values (building
-    a fresh 15M-step trajectory via build_reference_context() and real
-    Agents via run_one_real_loop()'s own defaults) -- tests override them
-    with a temp directory, a small trajectory, and FunctionModel fakes.
+    By default it builds the real 15M-step trajectory and real agents;
+    tests pass a temporary directory, a short trajectory and fake agents.
     """
     ledger_dir = ledger_dir or LEDGER_DIR
     ledger_dir.mkdir(parents=True, exist_ok=True)
@@ -91,10 +77,8 @@ def run_all_repetitions(n_repetitions=N_REPETITIONS, ledger_dir=None,
 
 
 def summarize_convergence(runs):
-    """Report the convergence rate honestly: a run that hit the iteration
-    cap without approval is NOT a converged run, and this function never
-    conflates the two (agents/orchestrator.py's stop_reason is what makes
-    this distinction possible at all)."""
+    """Report how many runs converged. A run that hit the iteration cap
+    without an acceptance counts as not converged."""
     converged = [run for run in runs if run.stop_reason == "validator_accepted"]
     exhausted = [run for run in runs if run.stop_reason == "iteration_cap_reached"]
 
@@ -107,10 +91,9 @@ def summarize_convergence(runs):
 
 def check_paths_differ(runs):
     """
-    Print every run's proposed-config sequence -- the direct evidence for
-    "the search explores." No pass/fail assertion: there is no known
-    answer for "how much should paths differ," this is a demonstrated,
-    human-inspectable property, not a gate.
+    Print each run's sequence of proposed configs, to show whether the
+    searches differ. A report, not a pass/fail check: there is no known
+    "right amount" of difference.
     """
     print("\n=== Search paths per run (demonstrates non-determinism) ===")
     for i, run in enumerate(runs, start=1):

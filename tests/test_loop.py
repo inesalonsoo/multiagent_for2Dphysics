@@ -1,12 +1,7 @@
 """
-Known-answer tests for agents/loop.py.
-
-This module is deliberately thin wiring, so its tests are correspondingly
-light: build_reference_context() is checked directly (real, deterministic,
-no LLM), and run_one_real_loop()'s WIRING is smoke-tested with
-FunctionModel fakes standing in for both agents -- no real API calls.
-Everything about routing/stopping/ledger faithfulness is already covered
-by tests/test_orchestrator.py; this file does not repeat that.
+Tests for agents/loop.py, which only wires things together: the reference
+inputs are checked directly, and one run is smoke-tested with fake agents
+(no API calls). Routing itself is tested in tests/test_orchestrator.py.
 """
 
 import os
@@ -45,10 +40,8 @@ def test_build_reference_context_is_deterministic_given_the_same_seed():
 
 @_REQUIRES_PHASE2_CACHE
 def test_run_one_real_loop_wires_fake_agents_together_correctly():
-    """Smoke test of the WIRING only -- routing/stopping/ledger integrity
-    is already covered by tests/test_orchestrator.py. Uses a small
-    trajectory and FunctionModel fakes for both agents (no real API
-    calls)."""
+    """Smoke test of the wiring only, with fake agents (no API calls) on the
+    real reference trajectory."""
     trajectory, search_bounds, rate_tolerance = build_reference_context(seed=7)
 
     def optimizer_fake_llm(messages, info):

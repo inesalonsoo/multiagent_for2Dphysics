@@ -1,17 +1,11 @@
 """
-K-means clustering of the feature trajectory into microstates, using
-deeptime.clustering.KMeans.
+Cut the trajectory into small regions ("microstates") with k-means
+clustering (deeptime.clustering.KMeans).
 
-We deliberately use MANY microstates (n_clusters=50, PROJECT_STATE.md
-Sec 4), not just 2. Clustering directly into 2 microstates would silently
-hand-build the two-macrostate answer ourselves instead of letting the MSM
-recover it from the transition dynamics between many finer microstates --
-exactly the "accidentally hand-built a 2-state model" failure mode that
-would make the downstream implied-timescale plot trivially true and
-uninformative. With 50 microstates spanning the state space, a single
-barrier-crossing event visibly passes through several distinct
-microstates on its way from one well to the other (see the visual check
-run alongside this module, described in PROJECT_STATE.md).
+We use many regions (50), not 2. Clustering straight into 2 would build
+the two-valley answer by hand; with many small regions the MSM has to
+discover the two valleys from how the system moves between regions, so
+finding them is a real test.
 """
 
 import numpy as np
@@ -28,7 +22,7 @@ def cluster_trajectory(features, n_clusters=50, seed=42, max_fit_frames=50_000):
     a microstate to) every frame of the full trajectory. Fitting k-means
     on the full data scales badly (fitting on 1.5M points took ~74s
     against this project's 1-D data vs ~1s for a 50k-frame subsample,
-    with visually identical resulting centroids -- see PROJECT_STATE.md).
+    with visually identical centroids).
     This does NOT lose statistics where it matters: the MSM is built from
     the discrete labels of the FULL trajectory, only the centroid-finding
     step is subsampled.
@@ -39,11 +33,10 @@ def cluster_trajectory(features, n_clusters=50, seed=42, max_fit_frames=50_000):
         Array of shape (n_frames, n_features), e.g. from
         pipeline.features.compute_features().
     n_clusters : int, optional
-        Number of k-means microstates. Default 50 (PROJECT_STATE.md Sec 4).
+        Number of k-means microstates. Default 50.
     seed : int, optional
         Random seed for k-means initialization and for choosing the
-        fitting subsample, so clustering is reproducible. Default 42
-        (PROJECT_STATE.md Sec 4).
+        fitting subsample, so clustering is reproducible. Default 42.
     max_fit_frames : int, optional
         Largest number of frames used to FIT the k-means centroids.
         Default 50,000. Trajectories shorter than this are used in full

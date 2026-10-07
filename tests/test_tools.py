@@ -1,10 +1,7 @@
 """
-Known-answer tests for agents/tools.py's run_msm_pipeline -- the
-deterministic tool that is the seam between verified physics and LLM
-reasoning. Two properties matter most and are tested explicitly, per
-PROJECT_STATE.md Sec 7 module 3.2: it is PURE AND DETERMINISTIC given
-(config, trajectory, dt), and it NEVER RAISES on an ill-posed config
-(returns a PipelineResult with `error` set instead).
+Tests for agents/tools.py's run_msm_pipeline, the analysis tool the agents
+call. Two guarantees are checked: the same inputs always give the same
+result, and a bad config returns a flagged result instead of crashing.
 """
 
 import numpy as np
@@ -15,16 +12,15 @@ from physics.known_answers import euler_maruyama_relaxation_rate_0d
 from physics.simulate_0d import run_trajectory_0d
 
 DT = 0.01
-# beta=5.0, converged msm_lagtime=20 -- reusing Phase 1's own validated
-# per-beta lag (PROJECT_STATE.md Sec 9), not re-deriving it here.
+# beta=5 test trajectory. Lag 20 is short (biased) but fine here: these tests
+# check determinism and structure, not accuracy.
 _TRAJECTORY = run_trajectory_0d(n_steps=750_000, seed=7, beta=5.0, dt=DT)
 _WELL_POSED_CONFIG = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=20)
 
 
 def test_run_msm_pipeline_is_deterministic_given_identical_inputs():
-    """Same config, same trajectory, same dt -- must return field-for-field
-    identical PipelineResult objects. This is what lets the loop-integrity
-    tests (module 3.7) replay a config without a real API call."""
+    """Same config, trajectory and dt must give identical results, so a
+    config can be replayed without any API call."""
     first_result = run_msm_pipeline(_WELL_POSED_CONFIG, _TRAJECTORY, DT)
     second_result = run_msm_pipeline(_WELL_POSED_CONFIG, _TRAJECTORY, DT)
 
@@ -57,12 +53,8 @@ def test_run_msm_pipeline_reports_vamp2_score_on_a_well_posed_config():
 
 def test_run_msm_pipeline_reports_well_identity_on_a_well_posed_config():
     """
-    Known-answer check: the two macrostates of a real double-well
-    trajectory must map to exactly one x_plus and one x_minus well --
-    the Phase 4 prerequisite (PROJECT_STATE.md Sec 9) this field exists
-    for (the tilted-potential Boltzmann-ratio check needs to know WHICH
-    population belongs to WHICH well; PCCA+'s 0/1 labels alone don't say).
-    Same order as macrostate_populations, index-for-index.
+    The two macrostates of a real double-well trajectory must map to one
+    x_plus and one x_minus well, in the same order as the populations.
     """
     result = run_msm_pipeline(_WELL_POSED_CONFIG, _TRAJECTORY, DT)
 
@@ -82,19 +74,10 @@ def test_run_msm_pipeline_leaves_well_identity_none_on_ill_posed_config():
 
 def test_run_msm_pipeline_can_overestimate_the_rate_at_a_too_short_lag():
     """
-    Known-answer check that the rate bias runs BOTH directions, not just
-    one. The real convergence-robustness study (PROJECT_STATE.md Sec 9)
-    only ever encountered REJECTED configs that UNDERestimated the rate
-    (a too-LONG lag) -- a real, one-sided gap in what had actually been
-    demonstrated, caught by reading results/phase3_convergence_study.png
-    closely. Standard MSM implied-timescale theory (Prinz et al. 2011)
-    predicts the opposite failure mode too: a lag SHORTER than the
-    system's mixing time underestimates the implied timescale, which
-    means it OVERestimates the rate (rate = 1/timescale). Confirmed here
-    on real data: msm_lagtime=1 measures a rate ~1.8x the analytical
-    value -- a real, well-posed (not ill-posed) config that a downstream
-    Validator would correctly REJECT on physics grounds, just from the
-    opposite side of the tolerance band.
+    A lag that is far too short makes the MSM underestimate the slowest
+    timescale, so it overestimates the rate (rate = 1/timescale). At
+    msm_lagtime=1 the measured rate is about 1.8 times the exact value: a
+    config that runs fine but that the Validator must reject on physics.
     """
     config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=1)
     analytical_rate = euler_maruyama_relaxation_rate_0d(beta=5.0, dt=DT)
@@ -109,8 +92,8 @@ def test_run_msm_pipeline_can_overestimate_the_rate_at_a_too_short_lag():
 
 
 def test_run_msm_pipeline_reports_lagtime_ill_posedness_without_raising():
-    """A lag time at least as long as the trajectory itself must come back
-    as a structured, flagged PipelineResult -- not an exception."""
+    """A lag at least as long as the trajectory must return a flagged
+    result, not raise."""
     tiny_trajectory = _TRAJECTORY[:100]
     degenerate_config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=200)
 
@@ -124,9 +107,8 @@ def test_run_msm_pipeline_reports_lagtime_ill_posedness_without_raising():
 
 
 def test_run_msm_pipeline_reports_clustering_ill_posedness_without_raising():
-    """Asking for far more clusters than a short trajectory can support
-    must come back as a structured, flagged PipelineResult -- not an
-    exception from deeptime's KMeans."""
+    """Far more clusters than a short trajectory can fill must return a
+    flagged result, not an exception from k-means."""
     tiny_trajectory = _TRAJECTORY[:10]
     degenerate_config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=2)
 

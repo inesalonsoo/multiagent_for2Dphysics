@@ -1,73 +1,24 @@
 """
-Optimizer Agent (PROJECT_STATE.md Sec 6/7, module 3.3) -- Ax-Prover's
-Prover (arXiv:2510.12787 Sec 3.1). A SINGLE-STEP proposer: given the run's
-history so far, propose the next PipelineConfig to try. No loop control
-lives here -- iterating, deciding when to stop, and routing feedback back
-and forth are the Orchestrator's job (module 3.5, not yet built).
-Collapsing that control into this module would undo the three-agent
-separation the whole architecture is built on: one agent, one
-responsibility, and this one's responsibility is "propose," full stop.
+The Optimizer agent (the "Prover" in Ax-Prover's design, arXiv:2510.12787
+Sec 3.1). One step per call: given the history of settings tried so far and
+what each one measured, an LLM proposes the next PipelineConfig (number of
+k-means regions and MSM lag time). Looping and stopping belong to the
+Orchestrator.
 
-WHAT IS AND ISN'T TESTABLE HERE -- read before adding a test.
-There is no closed-form "optimal" PipelineConfig, and the LLM's proposal
-is non-deterministic, so nothing in tests/test_optimizer.py asserts a
-proposed config is GOOD. That is demonstrated in real runs, reported in
-the ledger, and judged by the Validator against physics -- it cannot be a
-unit-test assertion. What IS deterministically testable, with no real API
-call (pydantic_ai.models.function.FunctionModel / .test.TestModel stand
-in for the LLM): that a malformed structured-output response is
-rejected/retried rather than corrupting the loop (pydantic-ai retries
-output validation automatically; exhausting retries raises a clear
-pydantic_ai.exceptions.UnexpectedModelBehavior, not a silently-wrong
-value -- verified interactively against the installed pydantic-ai 2.7.0
-before relying on it here); that the previous PipelineResult -- including
-a FAILED one -- actually reaches the prompt; and that, given a scripted
-fake LLM that reacts sensibly to a failure signal in the prompt, the next
-proposal differs from the config that just failed. That last property is
-the real behavioral guarantee worth locking down: an Optimizer that
-re-proposes an already-failed config is stuck. In short: this module's
-INTERFACE CONTRACT is verified; its REASONING QUALITY is demonstrated,
-not proven -- the Phase 3 analogue of known-answer discipline, adapted to
-a domain that has no known answer.
+What tests can and cannot check: there is no known "best" config and the
+LLM is not deterministic, so tests/test_optimizer.py never asserts that a
+proposal is good (the Validator judges that). With scripted fake LLMs it
+checks the interface: malformed output is rejected, failures reach the
+prompt, and a failed config is not proposed again.
 
-PROMPT DISCIPLINE (Ax-Prover's lesson, carried over from the tool
-design, PROJECT_STATE.md Sec 9 / agents/tools.py): the Optimizer chooses
-WHERE TO SAMPLE NEXT. It never predicts what VAMP-2 score a config will
-get -- that would be reasoning about an outcome it didn't measure, the
-exact failure mode the deterministic run_msm_pipeline tool (module 3.2)
-exists to prevent. The system prompt below asks for a config and a
-reason, never a score estimate; it is also handed explicit valid ranges
-(SearchBounds) so it proposes inside the well-posed region instead of
-guessing wildly outside it.
-
-[2026-07-12 REDESIGN -- SearchBounds no longer hands over the converged
-msm_lagtime.] The real convergence-robustness study (PROJECT_STATE.md
-Sec 9) showed that an earlier version of SearchBounds.as_prompt_text()
-handed the Optimizer Phase 1/2's own converged lag as "a well-motivated
-starting region" -- and every one of 8 independent real runs proposed the
-byte-identical config on iteration 1 as a direct result. That collapsed
-the search entirely: there was only one obviously-correct answer to give,
-so the Validator's gate was never exercised against a genuinely wrong
-config, and the Optimizer's own reacts-to-rejection behavior (real, and
-proven with fakes in tests/test_optimizer.py) never got to run under real
-conditions either. SearchBounds now states only the PHYSICAL REASONING
-that bounds a sensible lag time (short lags bias the rate; long lags
-starve transition-count statistics) -- not the solved value -- so the
-Optimizer has to actually search, and a too-short lag proposal now gets
-rejected by the Validator on real physics grounds (a genuinely biased
-rate falling outside the Validator's tolerance band), not a rigged one.
-
-[2026-07-12] VAMP-2 IS A SOFT GUIDE, NOT THE ACCEPTANCE CRITERION -- made
-explicit in the system prompt below, not left implicit. Before this, the
-system prompt said the Optimizer's job was to "maximize the cross-
-validated VAMP-2 score," full stop -- true as far as it went, but it never
-stated the more important fact: acceptance is decided entirely by the
-Validator's two hard physics gates (two_states_recovered,
-rate_matches_analytical), which are BLIND to VAMP-2 entirely. A config
-can have a great VAMP-2 score and still be rejected (wrong physics), or a
-middling one and still be accepted (right physics). VAMP-2 is only
-comparable between configs at the same lag time: it falls as the lag
-grows for any model.
+Prompt design:
+- The Optimizer chooses where to sample next; it is never asked to predict
+  a score, because only the pipeline tool can measure one.
+- It is given the valid ranges and the physics that bounds a sensible lag
+  time, but not the answer. (When the prompt once contained the lag then
+  believed converged, every run proposed it and no real search happened.)
+- VAMP-2, a model-quality score, is a soft guide that is only comparable at
+  equal lag time. Acceptance is decided by the Validator's physics checks.
 """
 
 import logging
@@ -80,9 +31,8 @@ from agents.schemas import LedgerEntry, OptimizerProposal
 
 logger = logging.getLogger(__name__)
 
-OPTIMIZER_MODEL = "anthropic:claude-sonnet-5"  # PROJECT_STATE.md Sec 4 -- pydantic-ai
-# requires the explicit "anthropic:" provider prefix; a bare "claude-sonnet-5" fails
-# infer_model() with "Unknown model" (caught interactively before any real API call).
+# pydantic-ai needs the "anthropic:" prefix; a bare model name fails with "Unknown model"
+OPTIMIZER_MODEL = "anthropic:claude-sonnet-5"
 
 OPTIMIZER_SYSTEM_PROMPT = """
 You are the Optimizer in a three-agent verification loop (Orchestrator /
@@ -130,16 +80,10 @@ Rules:
 @dataclass
 class SearchBounds:
     """
-    Valid ranges for the next proposal, computed from the loop's fixed
-    reference trajectory -- handed to the Optimizer as a CONSTRAINT
-    (what's well-posed), not a pre-solved ANSWER (what's correct). See
-    this module's docstring for why that distinction was tightened on
-    2026-07-12: handing over the converged lag value directly made every
-    real run propose the identical config, which meant the search never
-    happened and the Validator's gate was never tested against a wrong
-    answer. Deliberately NOT a Pydantic contract: this never crosses an
-    agent boundary or gets written to the ledger, it only shapes the
-    prompt built in this module.
+    Valid ranges for the next proposal, taken from the reference
+    trajectory. They tell the Optimizer what is allowed, never what is
+    correct. A plain dataclass, not a Pydantic contract: it only shapes
+    the prompt and is never stored in the ledger.
     """
 
     trajectory_length_frames: int
@@ -148,9 +92,8 @@ class SearchBounds:
     min_msm_lagtime: int = 1
 
     def as_prompt_text(self) -> str:
-        """Render these bounds as the constraint block of the user prompt.
-        States the PHYSICAL REASONING that bounds a sensible lag time, not
-        a pre-solved number -- see this class's docstring."""
+        """The bounds as prompt text: the valid ranges, plus the physics
+        that limits a sensible lag time (not a value for it)."""
         max_lagtime = self.trajectory_length_frames - 1
         return (
             f"n_clusters: integer in [{self.min_n_clusters}, {self.max_n_clusters}].\n"
@@ -171,11 +114,8 @@ class SearchBounds:
 
 def build_optimizer_agent(model: Any = None) -> Agent[None, OptimizerProposal]:
     """
-    Construct the Optimizer's pydantic-ai Agent. `model` defaults to this
-    project's approved agent model string (PROJECT_STATE.md Sec 4); tests
-    pass a pydantic_ai.models.function.FunctionModel or .test.TestModel
-    here instead, so nothing in tests/test_optimizer.py makes a real API
-    call.
+    Create the Optimizer's LLM agent. Tests pass a scripted fake `model`
+    so they never call a real API.
     """
     return Agent(
         model or OPTIMIZER_MODEL,
@@ -186,11 +126,8 @@ def build_optimizer_agent(model: Any = None) -> Agent[None, OptimizerProposal]:
 
 def _format_history_for_prompt(history: list[LedgerEntry]) -> str:
     """
-    Render past iterations as plain text for the prompt: what was
-    proposed, and what it actually measured (or the error it hit) -- the
-    "reasons about the previous result, including parsing errors"
-    requirement from PROJECT_STATE.md Sec 6, made concrete as text an LLM
-    call actually receives.
+    Write past iterations as plain text for the prompt: each proposal,
+    what it measured (or the error it hit), and the Validator's verdict.
     """
     if not history:
         return "No iterations yet -- this is the first proposal."
@@ -211,9 +148,7 @@ def _format_history_for_prompt(history: list[LedgerEntry]) -> str:
                 f"n_macrostates_recovered={result.n_macrostates_recovered}, "
                 f"relaxation_rate_mean={result.relaxation_rate_mean}"
             )
-            # The two hard gates, stated explicitly rather than left for the
-            # model to infer from prose -- these, not vamp2_score, decided
-            # the verdict below.
+            # The two physics checks that decided the verdict, stated explicitly
             lines.append(
                 f"  Physics gates: two_states_recovered={entry.decision.two_states_recovered}, "
                 f"rate_matches_analytical={entry.decision.rate_matches_analytical}"
@@ -224,10 +159,7 @@ def _format_history_for_prompt(history: list[LedgerEntry]) -> str:
             f"-- {entry.decision.reasoning}"
         )
         if entry.decision.suggested_change is not None:
-            # The Validator's own concrete suggestion for what to try next --
-            # computed but previously never surfaced back to the Optimizer,
-            # which meant real, usable feedback was going unread. Advisory
-            # only (agents/schemas.py), but still real signal worth showing.
+            # The Validator's suggestion for what to try next (advisory only)
             lines.append(f"  Validator's suggested_change: {entry.decision.suggested_change}")
     return "\n".join(lines)
 
@@ -248,10 +180,8 @@ def propose_next_config(
     search_bounds: SearchBounds,
 ) -> OptimizerProposal:
     """
-    The Optimizer's single step: given everything measured so far, choose
-    the next config to try. No looping and no stop decision here -- the
-    caller (eventually agents/orchestrator.py, module 3.5) decides what to
-    do with the result and whether to call this again.
+    The Optimizer's single step: from everything measured so far, propose
+    the next config. The Orchestrator decides whether to call it again.
     """
     prompt = _build_proposal_prompt(history, search_bounds)
     logger.info("Optimizer prompt (iteration %d):\n%s", len(history) + 1, prompt)

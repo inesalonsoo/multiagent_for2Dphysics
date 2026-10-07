@@ -23,9 +23,9 @@ def _with_n_steps(n_steps, function, *args):
 
 def test_resolved_replica_passes_both_gates():
     """
-    At beta=3, 1.5M steps span about 1200 slowest timescales: the replica
-    must show two metastable states and a rate within 6% (about two
-    standard errors) of the exact chain rate.
+    At beta=3, 1.5M steps see about 600 barrier crossings (about 4%
+    statistical error): the seeded replica must show two metastable states
+    and a rate within 6% of the exact chain rate.
     """
     replica = _with_n_steps(1_500_000, phase1.analyze_replica, 3.0, 11)
     chain_rate = euler_maruyama_relaxation_rate_0d(beta=3.0, dt=phase1.DT)

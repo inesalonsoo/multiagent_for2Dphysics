@@ -1,59 +1,21 @@
 """
-Orchestrator Agent (PROJECT_STATE.md Sec 6/7, module 3.5) -- Ax-Prover's
-missing piece (arXiv:2510.12787 Sec 3.1.1). The one agent with NO LLM in
-it, and that is the point: it makes no physics judgment and no search
-judgment, it only ROUTES what the Optimizer and Validator produce.
+The Orchestrator: runs the loop. It is the one agent with no LLM, because
+its job involves no judgment, only routing:
+1. Ask the Optimizer for a proposal, run it through the pipeline tool, and
+   pass the result to the Validator, without changing anything.
+2. Add each round to the history the Optimizer sees next time.
+3. Decide whether to stop (decide_next_action(), the only place this
+   happens). It trusts the Validator's verdict and never re-judges it.
 
-Three responsibilities, nothing more:
-1. TASK ASSIGNMENT -- calls the Optimizer for a proposal, then the
-   deterministic tool to run it, then the Validator to check it. It never
-   edits the Optimizer's PipelineConfig and never recomputes the
-   Validator's checks; it passes each straight through to the next step.
-2. FEEDBACK ROUTING -- appends every iteration's full round to the
-   history, which is exactly what the next propose_next_config() call
-   receives. There is no separate "routing" logic beyond keeping that
-   history complete and in order -- the Optimizer already knows how to
-   read a rejected/ill-posed entry (agents/optimizer.py, module 3.3).
-3. THE STOP DECISION -- decide_next_action() below, and nothing else in
-   this module, decides whether to continue. It reads
-   ValidatorDecision.verdict as a SETTLED Boolean and acts on it; it never
-   second-guesses whether a REJECT "should really" have been an ACCEPT --
-   that would be re-deciding the Validator's job here, collapsing two
-   roles into one and losing the separation the whole architecture is
-   built on.
+Being deterministic makes it fully testable: tests/test_orchestrator.py
+uses plain scripted functions instead of agents and checks that the same
+verdicts always give the same routing.
 
-DETERMINISTIC BY DESIGN, TESTED AS SUCH: every other agent in this
-project is fronted by an LLM and is therefore non-deterministic by
-nature (agents/optimizer.py, agents/validator.py both document this
-explicitly). The Orchestrator has no LLM call anywhere in it -- its
-entire behavior is decide_next_action(verdict, iteration, max_iterations),
-a pure function of a verdict sequence and a count. tests/
-test_orchestrator.py never touches a real or fake LLM: it scripts plain
-Python closures for "propose," "run the tool," and "validate," and
-proves the SAME sequence of verdicts always produces the SAME routing,
-deterministically. That is what makes the loop's control flow testable
-even though the agents inside it are not.
-
-TWO STOP CONDITIONS, TWO DISTINCT MEANINGS -- both real, both recorded,
-never conflated. APPROVE-stop (Validator accepted) is success. Reaching
-max_iterations without an ACCEPT is exhaustion -- the run did NOT
-converge. agents/schemas.py's AgenticRun.stop_reason ("validator_accepted"
-vs "iteration_cap_reached") already has a slot for exactly this
-distinction (module 3.1); this module is what actually sets it correctly,
-tested for both exits explicitly. Conflating them would let a
-non-converging loop masquerade as success -- and it is also the
-prerequisite for the convergence-robustness study PROJECT_STATE.md Sec 9
-flags as the natural next step once this module exists: you can only
-count "how often does this converge" if converged and exhausted runs are
-told apart cleanly in the ledger.
-
-THE LEDGER IS WRITTEN HERE -- faithful, not flattering. Every iteration,
-whatever actually happened (including an ill-posed config, a rejected
-config, or a Validator LLM whose stated verdict disagreed with the
-mechanical one) is appended to AgenticRun.entries as-is. Nothing is
-dropped, filtered, or summarized away -- the whole value of the ledger as
-this project's primary artifact is that it tells the true story of the
-search, messy iterations included, not a cleaned-up version of it.
+A run ends in one of two ways, recorded as different outcomes: success
+(the Validator accepted) or exhaustion (the iteration cap was reached with
+no acceptance). Keeping them apart is what makes "how often does the loop
+converge?" measurable. Every iteration goes into the ledger as it
+happened, including rejected and ill-posed ones.
 """
 
 from typing import Callable, Literal, Optional
@@ -73,7 +35,7 @@ from agents.schemas import (
 from agents.tools import run_msm_pipeline
 from agents.validator import REFERENCE_BETA, ValidatorLLMInterpretation, validate_pipeline_result
 
-MAX_ITERATIONS = 15  # PROJECT_STATE.md Sec 4/Sec 6 -- hard stop, PI's decision
+MAX_ITERATIONS = 15  # hard stop, the human's decision
 
 ProposeFn = Callable[[list], OptimizerProposal]
 RunPipelineFn = Callable[[PipelineConfig], PipelineResult]
@@ -84,11 +46,9 @@ def decide_next_action(
     verdict: Literal["ACCEPT", "REJECT"], iteration: int, max_iterations: int
 ) -> Literal["continue", "stop_accepted", "stop_iteration_cap_reached"]:
     """
-    The entire stop decision, as a pure function of (verdict, iteration,
-    max_iterations) -- no LLM, no history, nothing else consulted. ACCEPT
-    always wins, even exactly at the iteration cap: success takes
-    priority over exhaustion when both conditions coincide on the same
-    iteration, since the run DID converge there.
+    The whole stop decision, from the verdict and the iteration count
+    alone. An ACCEPT wins even on the last allowed iteration, because the
+    run did converge there.
     """
     if verdict == "ACCEPT":
         return "stop_accepted"
@@ -98,8 +58,7 @@ def decide_next_action(
 
 
 def _orchestrator_note_for(next_action: str) -> str:
-    """Plain-text routing note recorded on the ledger entry -- part of the
-    "read top to bottom as a narrative" design from agents/schemas.py."""
+    """Short plain-text note stored with each ledger entry."""
     if next_action == "stop_accepted":
         return "Validator approved this config -- stopping. Run converged."
     if next_action == "stop_iteration_cap_reached":
@@ -114,12 +73,9 @@ def run_agentic_loop(
     max_iterations: int = MAX_ITERATIONS,
 ) -> AgenticRun:
     """
-    The Orchestrator's loop. Takes three plain callables rather than the
-    real Optimizer/tool/Validator directly, so this function -- the
-    actual routing logic -- can be tested with fully scripted, fully
-    deterministic fakes and never needs an LLM, real or fake, in its own
-    test suite. See run_agentic_loop_with_real_agents() below for the
-    thin adapter that wires the real agents into this same function.
+    The Orchestrator's loop. It takes three plain functions rather than the
+    real agents, so the routing can be tested with scripted fakes;
+    run_agentic_loop_with_real_agents() plugs in the real ones.
 
     Parameters
     ----------
@@ -131,7 +87,7 @@ def run_agentic_loop(
     Returns
     -------
     AgenticRun
-        The complete, faithful ledger of every iteration actually run.
+        The complete ledger of every iteration run.
     """
     history: list[LedgerEntry] = []
 
@@ -158,9 +114,8 @@ def run_agentic_loop(
 
 
 def _build_agentic_run(history: list[LedgerEntry], max_iterations: int) -> AgenticRun:
-    """Package the completed history into the top-level ledger object,
-    setting stop_reason/accepted_config from the LAST entry's next_action
-    -- decide_next_action() guarantees the loop never ends on "continue"."""
+    """Package the history into the final ledger object. The stop reason
+    comes from the last entry, which is never "continue"."""
     last_entry = history[-1]
 
     if last_entry.next_action == "stop_accepted":
@@ -189,12 +144,9 @@ def run_agentic_loop_with_real_agents(
     max_iterations: int = MAX_ITERATIONS,
 ) -> AgenticRun:
     """
-    Thin adapter: builds the three closures run_agentic_loop() needs from
-    the REAL Optimizer, tool, and Validator, and delegates every routing
-    decision to run_agentic_loop() -- this function does no routing of
-    its own, only wiring. This is the entry point scripts/
-    run_phase3_agentic.py (not yet built) will call for a real run; tests
-    exercise run_agentic_loop() directly with fakes instead.
+    Connect the real Optimizer, pipeline tool and Validator to
+    run_agentic_loop(), which does all the routing. Used for real runs;
+    tests call run_agentic_loop() with fakes.
     """
     def propose_fn(history: list[LedgerEntry]) -> OptimizerProposal:
         return propose_next_config(optimizer_agent, history, search_bounds)

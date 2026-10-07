@@ -1,43 +1,21 @@
 """
-The deterministic tool the Optimizer calls (PROJECT_STATE.md Sec 6/7,
-module 3.2) -- NOT an LLM. This is the seam between the two halves of the
-project: everything this module calls into (pipeline/cluster.py,
-pipeline/msm.py) is verified, deterministic physics/statistics code;
-everything that calls this module (agents/optimizer.py, agents/
-validator.py) is LLM reasoning. run_msm_pipeline() has to be the
-trustworthy surface both sides can rely on, which means two properties,
-deliberately built in and both tested below:
+The analysis tool the loop runs on each proposal. It is ordinary code, not
+an LLM: it
+runs the pipeline (k-means regions, then the MSM) on the reference
+trajectory with the settings in a PipelineConfig and reports what it
+measures. It sits between the verified analysis code and the LLM agents,
+so it guarantees two things (both tested):
 
-1. PURE AND DETERMINISTIC given (config, trajectory, dt): the same inputs
-   always produce an identical PipelineResult. The only randomness in the
-   whole pipeline (k-means initialization and its fitting subsample) is
-   seeded from config.cluster_seed -- nothing here draws fresh randomness
-   of its own. This is what lets tests/test_tools.py,
-   tests/test_orchestrator.py, and tests/test_loop.py replay a config and
-   compare against a known result without touching a real API.
-2. NEVER RAISES on an ill-posed or failing config. A degenerate lag time,
-   a clustering that never visits every requested microstate, or deeptime
-   itself rejecting a degenerate count matrix are all caught and reported
-   as a PipelineResult with `error` set and the measurement fields left
-   None -- structured data the Optimizer/Validator can reason about, not
-   a crash. Per CLAUDE.md HARD BOUNDARY 5, every except block below logs
-   the full error (via the standard `logging` module) before returning;
-   nothing is swallowed silently.
+1. Deterministic: the same config, trajectory and time step always give
+   the same result. The only randomness (k-means) is seeded from the
+   config.
+2. Never crashes on a bad config. Problems such as a lag longer than the
+   trajectory, unvisited regions, or the MSM estimator rejecting the data
+   are logged in full and returned as a PipelineResult with `error` set,
+   so the agents can reason about them.
 
-Scope note: run_msm_pipeline() does NOT compare anything against
-physics/known_answers.py. It reports raw, real measurements only --
-deciding whether they PASS a physics check is the Validator's job (module
-3.4), grounded in the Booleans on agents/schemas.py's ValidatorDecision.
-Keeping that judgment out of this module is what lets it stay a pure,
-deterministic function agents can trust.
-
-[2026-07-12, Phase 4 prerequisite] macrostate_well_identity is now
-computed here (_classify_well_identity below), tying each PCCA+
-macrostate label back to its physical well (x_plus/x_minus) via the mean
-position of its constituent microstate cluster centers. This is the
-"well-identity tracking" agents/validator.py's dormant Boltzmann-ratio
-socket was found to need before any Phase 4 tilted-potential run --
-see PROJECT_STATE.md Sec 9.
+It does not judge the physics: comparing with the exact answers is the
+Validator's job.
 """
 
 import logging
@@ -55,10 +33,9 @@ logger = logging.getLogger(__name__)
 
 def _pre_check_lagtime(lagtime, trajectory_length_frames):
     """
-    Returns an error message if the lag time is not even shorter than the
-    trajectory (no transitions are observable at all), else None. Cheap:
-    catching this needs no deeptime call, so there is no reason to run
-    the rest of the pipeline first only to fail later.
+    Return an error message if the lag time is not shorter than the
+    trajectory (then no transitions can be observed), else None. Checked
+    first because it is free.
     """
     if lagtime >= trajectory_length_frames:
         return (
@@ -70,18 +47,15 @@ def _pre_check_lagtime(lagtime, trajectory_length_frames):
 
 def _cluster_and_check_coverage(trajectory, n_clusters, cluster_seed):
     """
-    Clusters the trajectory (pipeline.cluster.cluster_trajectory, seeded
-    from cluster_seed for determinism) and checks that every requested
-    microstate was actually visited by at least one frame.
+    Cluster the trajectory into k-means regions (seeded from cluster_seed)
+    and check that every requested region was visited at least once.
 
     Returns
     -------
     discrete_trajectory : np.ndarray or None (None on any failure)
     cluster_centers : np.ndarray or None (None on any failure)
-        Position of each microstate's centroid, shape (n_clusters, 1) --
-        kept (not discarded) because well-identity tracking (see
-        _classify_well_identity below) needs to know WHERE each
-        microstate sits, not just which macrostate PCCA+ assigned it to.
+        Position of each region's center, shape (n_clusters, 1). Kept so
+        each macrostate can be matched to its physical well.
     n_visited_microstates : int or None (None only if clustering itself raised)
     error_message : str or None (None on success)
     """
@@ -97,9 +71,8 @@ def _cluster_and_check_coverage(trajectory, n_clusters, cluster_seed):
 
     n_visited_microstates = int(len(np.unique(discrete_trajectory)))
     if n_visited_microstates < n_clusters:
-        # Ax-Prover Appendix C-style ill-posedness: the config asked for
-        # more microstates than the data actually populated -- a
-        # degenerate clustering, not a physics failure to be judged later.
+        # Ill-posed config (Ax-Prover Appendix C): more regions requested than
+        # the data fills. Not a physics failure.
         message = (
             f"n_clusters={n_clusters} requested but only "
             f"{n_visited_microstates} microstates were actually visited."
@@ -112,17 +85,17 @@ def _cluster_and_check_coverage(trajectory, n_clusters, cluster_seed):
 
 def _estimate_msm_and_macrostates(discrete_trajectory, msm_lagtime):
     """
-    Builds the transition count matrix (for the min-transition-count
-    diagnostic), the MSM, and its 2-macrostate PCCA+ coarse-graining, all
-    at msm_lagtime. deeptime itself can raise for a degenerate count
-    matrix (e.g. disconnected states) -- caught here, not propagated.
+    Build the transition counts, the MSM, and its 2-macrostate PCCA+
+    grouping, all at msm_lagtime. The MSM estimator can reject degenerate
+    data (for example disconnected regions); that is caught and returned
+    as an error.
 
     Returns
     -------
     msm, pcca_model : deeptime model objects, or None, None on failure
     min_transition_count : int or None
-        Smallest total outgoing transition count of any microstate -- the
-        state whose rate estimate is least statistically supported.
+        Smallest number of observed transitions out of any region: the
+        region whose statistics are weakest.
     error_message : str or None
     """
     try:
@@ -144,29 +117,17 @@ def _estimate_msm_and_macrostates(discrete_trajectory, msm_lagtime):
 
 def _classify_well_identity(cluster_centers, assignments):
     """
-    For each macrostate label (in the same 0, 1, ... order as
-    deeptime's own pcca_model.coarse_grained_stationary_probability --
-    verified directly against the installed deeptime before writing
-    this: coarse_grained_stationary_probability[i] and
-    cluster_centers[assignments == i] are consistently indexed by the
-    same macrostate label i), classify which PHYSICAL WELL it
-    corresponds to: the mean position of its constituent microstate
-    cluster centers being positive means the x~+1 well ("x_plus"),
-    negative means the x~-1 well ("x_minus").
-
-    This exists because PCCA+'s 0/1 macrostate labels are otherwise
-    physically arbitrary -- irrelevant for Phase 3's symmetric (b=0)
-    reference, where the two wells are interchangeable, but essential
-    for Phase 4's tilted deployment, where the Boltzmann population
-    ratio (the primary discriminating check there, see agents/
-    validator.py's dormant _check_boltzmann_ratio_matches_analytical)
-    needs to know WHICH measured population belongs to WHICH well.
+    Match each PCCA+ macrostate label (0, 1) to its physical well: the
+    label whose region centers sit at positive x on average is the x ~ +1
+    well ("x_plus"), the other is "x_minus". The labels themselves are
+    arbitrary; a tilted-well population check needs this mapping. Order
+    matches pcca_model.coarse_grained_stationary_probability.
 
     Parameters
     ----------
     cluster_centers : np.ndarray, shape (n_clusters, 1)
     assignments : np.ndarray, shape (n_clusters,)
-        pcca_model.assignments -- the macrostate label of each microstate.
+        pcca_model.assignments: the macrostate label of each region.
 
     Returns
     -------
@@ -182,18 +143,14 @@ def _classify_well_identity(cluster_centers, assignments):
 
 def _cross_validated_vamp2_score(discrete_trajectory, msm_lagtime):
     """
-    A simple two-fold cross-validated VAMP-2 score: fit an MSM on the
-    first half of the discrete trajectory, score it (deeptime's own
-    MarkovStateModel.score(r=2), the VAMP-2 definition) against the
-    held-out second half. This is the Optimizer's optimization objective
-    (PROJECT_STATE.md Sec 6) -- a measure of how well this (n_clusters,
-    msm_lagtime) choice generalizes, independent of and blind to the
-    Validator's physics checks.
+    VAMP-2 score with two-fold cross-validation: fit an MSM on the first
+    half of the trajectory and score it on the second half. VAMP-2 measures
+    how well the model captures the slow dynamics; it guides the
+    Optimizer, is comparable only at equal lag, and never decides
+    acceptance.
 
-    Returns None (logged, not raised) if scoring fails -- a missing
-    optimization score should not invalidate an otherwise-valid
-    PipelineResult; only the Optimizer needs it, and it can treat None as
-    "try a different config."
+    Returns None (logged) if scoring fails; the rest of the result is
+    still valid.
     """
     halfway_index = len(discrete_trajectory) // 2
     train_trajectory = discrete_trajectory[:halfway_index]
@@ -212,23 +169,20 @@ def _cross_validated_vamp2_score(discrete_trajectory, msm_lagtime):
 
 def run_msm_pipeline(config: PipelineConfig, trajectory: np.ndarray, dt: float) -> PipelineResult:
     """
-    Run the analysis pipeline (clustering + MSM + PCCA+) on `trajectory`
-    with the knobs in `config`, and return a PipelineResult. Pure and
-    deterministic given (config, trajectory, dt); never raises -- see the
-    module docstring for both guarantees and why they matter here.
+    Run the analysis (clustering, MSM, PCCA+) on `trajectory` with the
+    settings in `config` and return a PipelineResult. Deterministic and
+    never raises (see the module docstring).
 
     Parameters
     ----------
     config : agents.schemas.PipelineConfig
         n_clusters, cluster_seed, msm_lagtime to run with.
     trajectory : np.ndarray
-        The loop's fixed reference 0-D trajectory (physics.simulate_0d.
-        run_trajectory_0d output), generated once, reused across
-        iterations -- this tool never generates or touches physics
-        parameters (CLAUDE.md HARD BOUNDARY 2).
+        The loop's fixed reference trajectory, made once and reused. This
+        tool never changes physics parameters.
     dt : float
-        Time step used to generate `trajectory`, needed to convert the
-        MSM's implied timescale (in frames) into a rate (in 1/time).
+        Time step of `trajectory`, to convert the MSM's timescale from
+        frames to time.
 
     Returns
     -------
@@ -267,8 +221,7 @@ def run_msm_pipeline(config: PipelineConfig, trajectory: np.ndarray, dt: float) 
         pcca_model.coarse_grained_stationary_probability.tolist()
         if n_macrostates_recovered == 2 else None
     )
-    # Phase 4 prerequisite (PROJECT_STATE.md Sec 9): PCCA+'s 0/1 labels are
-    # otherwise physically arbitrary. Same index order as macrostate_populations.
+    # Which physical well each macrostate is (same order as the populations)
     macrostate_well_identity = (
         _classify_well_identity(cluster_centers, pcca_model.assignments)
         if n_macrostates_recovered == 2 else None

@@ -12,17 +12,15 @@ seven theorems below are still unproved placeholders. Claude Code writes
 statements only, never proof bodies (see CLAUDE.md's "Lean / ax-prover
 scope boundaries" section); the intended prover is `ax-prover`. Two
 theorems are fully proved:
-- `potential_even_at_b0` (pure algebra, no derivative), by `ax-prover`,
-  2026-07-30.
-- `V_hasDerivAt`, by the external tool Lemma (output dated 2026-09-15), at
-  the human's direction and outside the ax-prover workflow, after
-  ax-prover failed on it 11 times and its run ran out of API credits. The
-  statement is unchanged; only the proof body was added. Checked
-  2026-09-25 on this project's pinned toolchain (v4.33.0-rc1, Mathlib
-  9d302fc per `lake-manifest.json`): `#print axioms` lists only the three
-  standard axioms [propext, Classical.choice, Quot.sound]. Log:
-  `results/lean_v_hasDerivAt_check.log`; details in PROJECT_STATE.md §9
-  (2026-09-25 entry).
+- `potential_even_at_b0` (pure algebra, no derivative), by `ax-prover`.
+- `V_hasDerivAt`, by the external tool Lemma, at the human's direction and
+  outside the ax-prover workflow, after ax-prover failed on it 11 times
+  and its run ran out of API credits. The statement is unchanged; only the
+  proof body was added.
+On this project's pinned toolchain (v4.33.0-rc1, Mathlib 9d302fc per
+`lake-manifest.json`), `#print axioms` lists only the three standard axioms
+[propext, Classical.choice, Quot.sound] for both. Log:
+`results/lean_v_hasDerivAt_check.log`; history in docs/HISTORY.md.
 
 Note for editors: this module docstring deliberately never spells out
 Lean's placeholder keyword. ax-prover 0.1.1 treats the `import Mathlib`

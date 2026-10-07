@@ -1,15 +1,8 @@
 """
-Known-answer tests for agents/orchestrator.py.
-
-The Orchestrator has no LLM in it, so unlike test_optimizer.py/
-test_validator.py this file never needs a pydantic_ai fake -- routing is
-tested entirely with plain scripted Python closures, proving the
-Orchestrator's decisions are a pure, deterministic function of the
-verdict sequence and iteration count. The one exception is
-test_run_agentic_loop_with_real_agents_wires_the_real_modules_together,
-a lightweight smoke test of the real-agent adapter (still using
-FunctionModel fakes for the two LLMs -- no real API calls anywhere in
-this suite).
+Tests for agents/orchestrator.py. The Orchestrator has no LLM, so routing
+is tested with plain scripted functions: the same verdicts must always
+give the same routing. One smoke test wires in the real agents with fake
+LLMs (no API calls anywhere in this file).
 """
 
 import json
@@ -76,11 +69,10 @@ def _accept_with_llm_disagreement_decision():
 
 def _make_scripted_fns(rounds):
     """
-    rounds: list of (PipelineConfig, PipelineResult, ValidatorDecision)
-    tuples, one per iteration. Returns (propose_fn, run_pipeline_fn,
-    validate_fn) that replay these in lockstep, driven by len(history)
-    -- propose_fn is always called first each iteration by
-    run_agentic_loop, so it alone needs to read the history.
+    rounds: list of (PipelineConfig, PipelineResult, ValidatorDecision),
+    one per iteration. Returns (propose_fn, run_pipeline_fn, validate_fn)
+    that replay them in order, driven by len(history) (propose_fn is
+    called first in each iteration).
     """
     current_index = {"i": 0}
 
@@ -115,9 +107,7 @@ def test_decide_next_action_is_a_pure_function_of_verdict_and_iteration(
 
 
 def test_orchestrator_routing_is_deterministic_given_the_same_verdict_sequence():
-    """Same sequence of verdicts in, same routing out -- run the identical
-    scripted history through the loop twice and require an identical
-    AgenticRun both times."""
+    """The same scripted history run twice must give identical runs."""
     rounds = [
         (_STUB_CONFIG, _stub_result(_STUB_CONFIG), _reject_decision()),
         (_STUB_CONFIG, _stub_result(_STUB_CONFIG), _accept_decision()),
@@ -151,9 +141,8 @@ def test_loop_stops_at_the_iteration_the_validator_approves():
 
 
 def test_loop_exhausts_at_max_iterations_when_validator_never_approves():
-    """max_iterations-stop: a sequence that never approves must stop
-    exactly at the cap, with a DISTINCT "exhausted" status -- not
-    conflated with the success exit above."""
+    """A run that is never approved must stop exactly at the cap, marked
+    as exhausted, not as a success."""
     max_iterations = 3
     rounds = [
         (_STUB_CONFIG, _stub_result(_STUB_CONFIG), _reject_decision())
@@ -210,13 +199,10 @@ def test_ledger_is_faithful_not_flattering():
 
 def test_run_agentic_loop_with_real_agents_wires_the_real_modules_together():
     """
-    Not a routing test (covered above with pure fakes) -- a lightweight
-    smoke test that the adapter correctly wires the real Optimizer, tool,
-    and Validator into run_agentic_loop(). FunctionModel fakes stand in
-    for both LLMs (no real API calls); a small real trajectory and the
-    real run_msm_pipeline exercise the actual deterministic pipeline. A
-    loose, hermetic rate_tolerance keeps this test independent of cached
-    Phase 2 files.
+    Smoke test that the real Optimizer, pipeline tool and Validator are
+    wired into run_agentic_loop() correctly, using fake LLMs, a short real
+    trajectory and the real pipeline. A loose fixed tolerance keeps it
+    independent of saved results.
     """
     trajectory = run_trajectory_0d(n_steps=750_000, seed=7, beta=5.0, dt=0.01)
     search_bounds = SearchBounds(trajectory_length_frames=len(trajectory), max_n_clusters=100)

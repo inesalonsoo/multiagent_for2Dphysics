@@ -1,113 +1,200 @@
 # Moiré-MSM-Engine
 
-**An autonomous multi-agent system that discovers Markov State Model pipelines for stochastic dynamics, verifies every result against exact analytical physics, and quantifies its own uncertainty. Demonstrated on a textbook double-well benchmark, motivated by — but not a physical model of — switching dynamics in moiré (twisted-bilayer) materials (see "Where moiré materials fit" below).**
+Can an AI agent be trusted to set up a scientific analysis? This project
+tests that on a problem whose answer is known exactly, so every result can
+be checked.
 
-## Overview
+## The idea in one minute
 
-This project asks the following question: can a multi-agent LLM system be trusted to discover the analysis pipeline for a stochastic dynamical system, when every claim it makes is checked against a known, closed-form physical answer?
+Picture a ball in a landscape with two valleys, constantly shaken by heat.
+Most of the time it rattles around inside one valley; now and then a strong
+kick carries it over the hill into the other. How often that happens (the
+**hopping rate**) is a basic question about many physical systems, from
+molecules to magnetic materials.
 
-The benchmark system used in this project is a stochastic double well, dx = −V'(x)dt + √(2/β)dW — the textbook 1-DOF Kramers problem, chosen deliberately because it is one of the few stochastic systems where both sides of the check are closed-form: the Eyring-Kramers escape rate's exponent is exact and its prefactor is asymptotically exact (exact as β→∞, matching this project's own measured rate to a few percent within its gated β≤7 range — see `physics/known_answers.py`), and the equilibrium population ratio (Boltzmann) is exact by symmetry. A Markov State Model (MSM) pipeline is built on trajectory data from this system; its output is checked against those exact answers, not against another model or a fit. Phase 2 adds an honest statistical + systematic error budget on top of that check. Phase 3 wraps the whole pipeline in a three-agent architecture — Orchestrator / Optimizer / Validator, mirroring the Prover/Verifier separation of [Axiomatic AI's Ax-Prover](https://arxiv.org/abs/2510.12787) (Breen et al.), where an LLM proposes analysis configurations and a second, independent process grounded in the same closed-form physics decides whether to accept them. The LLM never gets to grade its own work.
+We simulate this "double well" and analyze the simulated path with a
+**Markov State Model (MSM)**: the path is cut into small regions, and the
+MSM records how often the ball moves from one region to another. From that
+map it estimates how fast the system relaxes between the valleys, which is
+set by the hopping rate.
 
-### Where moiré materials fit — motivation, not derivation
+For this landscape the true answer can be computed exactly, without any
+simulation. So we can check the analysis against the truth, not against
+another model.
 
-Phase 4 (not yet attempted) applies the same verified pipeline to a 2D stochastic Allen-Cahn field — still a scalar double-well system, now spatially extended — with a tilt parameter breaking its symmetry the same way Phase 1's `b` does, as a qualitative stress test of the methodology at higher dimensionality.
+On top of that, the analysis is run by three agents: an AI proposes the
+settings, ordinary code checks the physics (a second AI only comments on
+the result), and a fixed rule decides when to stop. A separate part of the
+project states facts about the landscape in the **Lean** proof assistant,
+2 of 7 of them proved so far.
 
-**This is explicitly not a model of real moiré domain-wall physics.** Twisted-bilayer-graphene stacking domains are governed by a 2-component displacement field on a landscape with three-fold (AA/AB/BA) symmetry set by the generalized stacking-fault energy — not a scalar double well — and domain-wall relaxation there is an elastic soliton-network problem, not single-particle thermal hopping between two Boltzmann-weighted minima. Nothing in this project's model is derived from moiré elasticity; the tilt parameter is a reasonable toy stand-in for breaking a symmetry, no more.
+## What we check against
 
-The actual connection is motivation, not derivation: moiré materials are a real system where verified, uncertainty-quantified switching-rate extraction would matter. This project demonstrates that methodology on a textbook benchmark chosen because its ground truth is *exactly known*, not because it resembles the target system's microscopic physics. Building a model that actually derives from moiré elasticity would be a distinct, substantially larger undertaking than what's demonstrated here.
+The model is the overdamped double well dx = −V′(x)dt + √(2/β)dW with
+V(x) = A(x² − 1)², where β measures how cold the system is (higher β means
+rarer hops). The exact references (`physics/known_answers.py`):
 
-## Architecture
+- **The relaxation rate λ₂**: how fast the system forgets which valley it
+  started in, which is what an MSM measures. For two equal valleys it is
+  twice the hopping rate. Computed from the governing equation on a fine
+  grid.
+- **The simulated version of that rate**: the simulation moves in small
+  time steps, which speeds it up slightly (1.2% at our step size); we
+  compute that exactly too.
+- **How the time is shared between the valleys**: exactly 50/50 for the
+  symmetric landscape (a reference value; it is not used as a pass/fail
+  check).
 
-| Phase | What it does | Status |
+The textbook Eyring-Kramers formula only becomes exact for very cold
+systems. At the temperatures used here it overestimates the rate by 7-11%,
+so it is shown only for comparison.
+
+## Results
+
+| Phase | Question | Answer |
 |---|---|---|
-| **1 - Verified engine** | 0-D stochastic double well; MSM recovers exactly two macrostates; extracted rate matches the Eyring-Kramers law (exponent exact, prefactor asymptotically exact) to a few percent | **Complete** |
-| **2 - Uncertainty quantification** | BayesianMSM credible intervals combined with Phase 1's measured systematic bias into an honest total error budget | **Complete** |
-| **3 - Agentic loop** | Orchestrator / Optimizer / Validator loop proposes, runs, and verifies analysis configurations autonomously, against the same physics from Phase 1/2 | **Complete, demonstrated with real LLM calls** |
-| **4 - 2D deployment** | Same verified pipeline applied to a 2D Allen-Cahn field with a symmetry-breaking tilt (a toy stand-in, not a moiré-elasticity model — see above); qualitative validation against the Phase 1 reference | Not complete |
+| 1. The physics | Does the MSM recover the true rate? | Consistent with it at every temperature the data can resolve (β = 3-9) |
+| 2. Error bars | Are the MSM's built-in (Bayesian) error bars honest? | No: they are far too narrow (an honest negative result) |
+| 3. AI agents | Can agents run the analysis under a strict physics check? | The checking machinery works; its rate check is too loose to catch a 5% bias |
+| 3.5. Formal proofs | Can facts about the landscape be proved in Lean? | 2 of 7 statements proved so far |
+| 4. 2D extension | Same analysis on a 2D field | Not started; parameters being re-chosen |
 
-The three agents in Phase 3, and how they map onto Ax-Prover:
+### Phase 1: the physics
 
-- **Optimizer** (≙ Prover) — proposes the next analysis configuration (cluster count, MSM lag time). Disciplined by a deterministic tool call, never allowed to predict its own score.
-- **Validator** (≙ Verifier) — computes two hard physics checks in plain Python against the closed-form answers *before* any LLM call, then asks an LLM only to interpret an already-decided verdict. The verdict is a property of the schema, not of the LLM's opinion: a `model_validator` recomputes it from the checks on every construction, so an enthusiastic "looks good" from the LLM cannot flip a failing check. One qualification: the physics *check* (Kramers rate, Boltzmann ratio) is an independent, closed-form oracle, but its *tolerance width* is not an independently chosen precision — `rate_matches_analytical`'s acceptance band (`agents/validator.py::load_rate_tolerance`) reuses Phase 1's own measured total statistical+systematic deviation as the band width, so the gate is set at the precision this project has already demonstrated it can measure, not an independent a-priori target.
-- **Orchestrator** — pure routing. No LLM, no physics judgment: a deterministic function of the Validator's verdict and the iteration count decides whether to continue, accept, or stop at the iteration cap.
+For each temperature we run 6 independent simulations. In each, the MSM's
+**lag time** (how far apart in time it looks when counting moves) is set
+to a tenth of the slowest timescale it finds, and two sanity checks must
+pass: the model predicts its own longer-lag behavior (a Chapman-Kolmogorov
+test), and exactly one slow process exists (two valleys, not one). For
+β = 3-9 the measured rate is consistent with the exact one (no difference
+at the 1% significance level). The precision is 1-3% at β = 3-5 and loosens
+to tens of percent at β = 8-9, where hops are rare. At β = 10 the
+simulation sees too few hops to measure, and we say so.
 
-## Verified results
+![Measured vs exact relaxation rate](results/arrhenius.png)
 
-### Phase 1 — the physics
+### Phase 2: the error bars
 
-Sweeping β = 3–10, the MSM-extracted relaxation rate follows log(rate) vs. β with slope **−0.981** against the exact analytical slope of −1 (**1.87% deviation**), and the equilibrium population ratio matches exp(−βΔF) exactly at the symmetric point. Two real methodological bugs were found and fixed en route (sparse-transition-count bias at high β, and an under-converged MSM lag time) — documented in `PROJECT_STATE.md`.
+The MSM software can also report Bayesian error bars. Here they are 11-193
+times narrower than the actual spread between independent simulations, and
+contain the exact answer in only 2 of 42 cases. The reason: the software
+treats millions of overlapping, strongly correlated observations as if
+they were nearly independent. We use the spread between simulations as our
+error bars instead.
 
-The top panel below is the classic log-rate view; on a 3-decade log scale, the 1–9% statistical/systematic deviations Phase 2 actually quantifies are visually invisible — the bottom panel plots that deviation directly, on a linear scale, which is the panel that actually carries Phase 2's error-budget result.
+### Phase 3: the AI agents
 
-![Arrhenius plot, with residual panel](results/arrhenius.png)
+The design follows [Ax-Prover](https://arxiv.org/abs/2510.12787), which
+separates the agent that proposes from the one that verifies:
 
-### Phase 2 — the uncertainty
+- The **Optimizer** (an AI) proposes settings: the number of regions and
+  the lag time.
+- The **Orchestrator** (plain code) runs the analysis on each proposal,
+  passes the result on, and decides when to stop.
+- The **Validator** checks the physics in ordinary code before any AI is
+  asked: one slow process, and a rate within ±5.6% of the exact value.
+  That band is three times the spread of 6 simulations at this temperature;
+  the trend over all temperatures suggests the true spread is larger (about
+  3.4%, so a band near ±10%). Its AI only comments; it cannot overturn a
+  check.
 
-A first version of the UQ gate checked the analytical rate against a bare Bayesian credible interval and failed at 4 of 5 test points. This is not a bug, but a bare statistical interval failing to account for the real systematic bias Phase 1 had already measured. The fix follows standard experimental practice: report statistical and systematic uncertainty separately, combine them in quadrature (**≈3.16%** at the reference β), and check the total against the analytical rate. That check was itself genuinely falsifiable at first (it failed twice on real data as the band-centering was debugged), but the fix for those failures — centering the band and the systematic term on the same reference mean — turned out to make containment of the analytical value algebraically guaranteed, not a fact about the data. Found and fixed: the analytical-value check is now a reported consistency check on the arithmetic, not a gate, and a genuinely falsifiable gate replaced it — a held-out split of Phase 1's replicas, testing whether one half's mean falls inside a band built entirely from the other half. Full derivation and fix in `PROJECT_STATE.md`.
+An earlier study (4 runs, 20 proposals) used the Eyring-Kramers formula as
+its reference. Re-checked against the exact rate, without any new AI calls,
+all 17 distinct settings pass. Within that one simulation the measured rate
+clearly falls toward the exact value as the lag time grows, but short lag
+times sit up to 5.5% high, still inside the ±5.6% band. The original check
+had accepted only those short-lag settings and rejected the accurate ones.
+The next step is for the Validator to also require a converged lag (at
+least a tenth of the slowest timescale, as Phase 1 does).
 
-### Phase 3 — the agents search, and the verifier constrains them
+![Phase 3 settings re-checked](results/phase3_rescore.png)
 
-An early version of the Optimizer's prompt handed it the converged configuration directly: every one of 8 real runs proposed the identical config on the first try, so the Validator's gate was never tested against a wrong answer. Diagnosed, reported, and fixed: the Optimizer is now given only the search space, not the answer. Four independent real runs (`anthropic:claude-sonnet-5`, real API calls) then showed the property the architecture is actually meant to demonstrate:
+### Phase 3.5: the formal proofs
 
-- **4/4 runs converged**, taking 4–6 iterations each; search paths share early prefixes and then diverge (runs 2 and 3 propose byte-identical first two configs; runs 1 and 4 share their first) — 3 distinct openers, 4 distinct endpoints
-- **16 of 20 proposed configs were genuinely rejected**, 100% attributable to the physics gate (a biased rate), 0% to ill-posedness. The Validator is discriminating, not rubber-stamping
-- The 4 accepted configs are 4 genuinely different `(n_clusters, lag)` pairs, reached via different post-divergence paths, whose measured rates agree with the analytical prediction and with each other to within Phase 2's error band — landing inside the band is true *by construction* here (`rate_matches_analytical` in-band-ness is the Validator's sole binding accept criterion in this study, since `two_states_recovered` was True and `is_ill_posed` False in all 20/20 iterations); the non-trivial part is that 4 independently-searched configs converge on mutually consistent physics while 16 others are correctly turned away
+[`lean/Oracle/Potential.lean`](lean/Oracle/Potential.lean) states 7 facts
+about the landscape: the formula for its slope, its curvature at the
+valleys and the hilltop, where the valleys are, how high the hill is, and
+its left-right symmetry. Lean only accepts a proof if every step is
+correct; an unproved statement certifies nothing yet.
 
-Different debates, same verification standard, consistent accepted physics. This tells us that the verifier is doing real constraining work by rejecting wrong configs — not that landing "inside the band" is itself a discovery.
+- Proved: the left-right symmetry (by
+  [ax-prover](https://arxiv.org/abs/2602.24273)) and the slope formula used
+  by the simulation (by Lemma, another proof tool). Lean confirms neither
+  relies on an unproved placeholder
+  ([check log](results/lean_v_hasDerivAt_check.log)).
+- The statements are written first and never edited by the prover.
+- The curvature and barrier facts back the Eyring-Kramers comparison; the
+  exact rates themselves are computed numerically, outside Lean.
+- Setup: Lean v4.33.0-rc1, Mathlib locked at `9d302fc`. Build with
+  `cd lean && lake exe cache get && lake build`.
 
-![Convergence study](results/phase3_convergence_study.png)
+## Known limitations
 
-**One asymmetry worth stating explicitly**: in these 4 runs, every rejection and every accepted rate happened to sit on the same side of the analytical value (measured low) — the plot above shows it directly. That's a real, one-sided gap in what this particular batch demonstrates about the Validator, not a bug. It was checked directly against the real pipeline (no LLM call needed): a lag time short enough to sit below the system's mixing time gives a real, well-posed config that *overestimates* the rate by as much as 82%, and the Validator's actual check function rejects it — confirming the gate is symmetric, from real data rather than assumption. Full investigation in `results/phase3_convergence_study_report.md`; locked in as a permanent test in `tests/test_tools.py`.
-
-Full narrative in `results/phase3_convergence_study_report.md`; every run's ledger is in `results/phase3_convergence_study/`.
+- The MSM's Bayesian error bars are overconfident here (Phase 2).
+- The agents' rate check is too loose to catch a ~5% bias, and its width
+  rests on only 6 simulations (Phase 3).
+- The MSM assumes the dynamics are reversible in time (detailed balance)
+  rather than testing it.
+- Phase 1 takes about 5 hours, mostly for the Bayesian error bars.
+- In 2D, the energy barrier grows with the system's area, so the planned
+  2D parameters are being re-chosen.
 
 ## Repository structure
 
 ```
-physics/       the environment: potential, 0-D/2D integrators, closed-form known answers
-pipeline/      the analysis: clustering, MSM construction, Bayesian UQ
-agents/        the three-agent loop: schemas, deterministic tool, Optimizer, Validator, Orchestrator
-scripts/       phase entry points (run_phase1_benchmark.py, run_phase2_uq.py, run_phase3_agentic.py, ...)
-tests/         known-answer tests, one file per module, 102 passed / 3 skipped (Lean Group B, pending a real ax-prover run; plus the new held-out UQ gate, pending a cache regeneration — see PROJECT_STATE.md's 2026-08-03 entry)
-results/       generated plots, raw sweep data, agent ledgers
-archive/       superseded artifacts (pre-pivot dead ends, an old study run) — not part of the current pipeline, kept for the record
-CLAUDE.md          project constitution: engineering discipline and hard boundaries
-PROJECT_STATE.md   full session-by-session working log — every decision, bug, and finding
+physics/      the landscape, the simulations, the exact answers
+pipeline/     the analysis: regions, MSM, error bars
+agents/       the three agents and their analysis tool
+lean/         the formal proofs
+scripts/      one entry point per phase
+tests/        automated checks, one file per module
+results/      figures, data, agent logs, Lean check log
+presentation/ slide deck
+docs/         full project history
+archive/      superseded material, kept for the record
 ```
 
-## Getting started
+`CLAUDE.md` holds the project's working rules; `PROJECT_STATE.md` its
+current state.
+
+## Running it
 
 ```bash
 git clone https://github.com/inesalonsoo/multiagent_for2Dphysics.git
 cd multiagent_for2Dphysics
 python -m venv .venv
-source .venv/Scripts/activate      # .venv\Scripts\Activate.ps1 on Windows PowerShell
+source .venv/Scripts/activate      # .venv\Scripts\Activate.ps1 in PowerShell
 pip install -r requirements.txt
-pytest tests/ -q                   # 102 passed, 3 skipped (Lean Group B + the new held-out UQ gate,
-                                    # pending a cache regeneration -- see PROJECT_STATE.md), no API key required
+pytest tests/ -q                   # 112 tests; no API key needed
 ```
-
-Phases 1 and 2 run standalone:
 
 ```bash
-python -m scripts.run_phase1_benchmark
-python -m scripts.run_phase2_uq
+python -m scripts.run_phase1_benchmark    # about 5 hours
+python -m scripts.run_phase2_uq           # seconds, uses Phase 1's results
+python -m scripts.rescore_phase3_ledgers  # about 10 minutes, no AI calls
 ```
 
-Phase 3 makes real calls to the Anthropic API — set `ANTHROPIC_API_KEY` in a local `.env` file (never committed; see `.env.example`) before running:
+The agents call the Anthropic API. Set the key as an environment variable
+first (`export ANTHROPIC_API_KEY=...`, or `$env:ANTHROPIC_API_KEY="..."` in
+PowerShell), then run `python -m agents.loop`. The tests use scripted fake
+agents and make no API calls.
 
-```bash
-python -m agents.loop                    # one real agentic-loop run
-python -m scripts.run_phase3_agentic     # the full convergence-robustness study
-```
+## Where moiré materials fit
 
-All test-suite coverage of the agentic loop uses scripted fake LLMs (`pydantic_ai.models.function.FunctionModel`). Zero real API calls are made by `pytest`.
-
-## Engineering discipline
-
-Every module carries a plain-English docstring, named intermediate variables, and no function longer than ~40 lines. Known-answer checks are treated as law: a failing physics check is stopped and reported, never loosened to force a pass. Every design decision, bug, and honest negative finding is logged in `PROJECT_STATE.md` as it happens, including the times a first attempt was wrong, diagnosed, and fixed in the open rather than overwritten.
+Moiré materials (stacked, slightly twisted atomic layers) are the
+motivation: they switch between competing arrangements, and measuring such
+switching reliably matters. This project is not a model of them; real moiré
+domains are far more complex than a double well. It develops a checkable
+method on a problem with a known answer.
 
 ## References
 
-- Rolland, Bouchet & Simonnet, *Computing transition rates for the 1-D stochastic Ginzburg–Landau–Allen–Cahn equation*, [arXiv:1507.05577](https://arxiv.org/abs/1507.05577) — the 0-D/2D physics ground truth this project builds on.
-- Axiomatic AI (Breen et al.), *Ax-Prover*, [arXiv:2510.12787](https://arxiv.org/abs/2510.12787) — the Orchestrator/Prover/Verifier architecture Phase 3's agent design mirrors.
+- Rolland, Bouchet & Simonnet, *Computing transition rates for the 1-D
+  stochastic Ginzburg-Landau-Allen-Cahn equation…*,
+  [arXiv:1507.05577](https://arxiv.org/abs/1507.05577): reference for the
+  field version (Phase 4).
+- Breen et al., *Ax-Prover: A Deep Reasoning Agentic Framework for Theorem
+  Proving in Mathematics and Quantum Physics*,
+  [arXiv:2510.12787](https://arxiv.org/abs/2510.12787): the agent design.
+- Requena et al., *A Minimal Agent for Automated Theorem Proving*,
+  [arXiv:2602.24273](https://arxiv.org/abs/2602.24273): the `ax-prover` tool.

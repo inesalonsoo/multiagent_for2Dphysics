@@ -103,7 +103,7 @@ def test_pure_diffusion_noise_variance_matches_prediction():
     noise amplitude can't hide behind the potential's own dynamics.
 
     With no potential term, d(phi)/dt = gamma*laplacian(phi) + noise is
-    pure linear diffusion plus additive noise -- no metastability, no
+    pure linear diffusion plus additive noise: no metastability, no
     wells. Under periodic boundaries the discrete Laplacian conserves
     the grid SUM exactly on every step (it only moves phi between
     cells), so the domain-mean order parameter's fluctuations come only
@@ -116,12 +116,12 @@ def test_pure_diffusion_noise_variance_matches_prediction():
     divided by the number of cells squared). Comparing many independent
     replicas against this prediction will immediately reveal a wrong
     noise_variance (e.g. passing the amplitude sqrt(2*gamma/beta)
-    instead of its square by mistake) -- long before it could
+    instead of its square by mistake), long before it could
     contaminate a switching-rate measurement downstream.
 
     Replicas must be genuinely independent trajectories (each is a
     fresh, separately-integrated realization of the noise), not frames
-    of a single trajectory -- that would not test the same thing and,
+    of a single trajectory. Frames would not test the same thing and,
     for the full potential-on dynamics, would also be statistically
     invalid (the domain mean is not a simple random walk once the
     nonlinear force is present). To keep this cheap, we build ONE

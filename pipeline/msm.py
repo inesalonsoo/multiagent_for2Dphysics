@@ -9,9 +9,10 @@ import numpy as np
 from deeptime.markov import TransitionCountEstimator
 from deeptime.markov.msm import MaximumLikelihoodMSM
 
-# A trajectory spanning N slowest timescales contains about N barrier
-# crossings, so its rate estimate has roughly 1/sqrt(N) relative error.
-# Below 20 (about 20% error) t_2 is not considered resolved.
+# A trajectory spanning N slowest timescales contains about N/2 barrier
+# crossings (t_2 = 1/(2k) for two equal wells), so its rate has roughly
+# sqrt(2/N) relative error. Below 20 (about 30% error) t_2 is not
+# considered resolved.
 MIN_RELAXATIONS_PER_TRAJECTORY = 20
 
 # Gate thresholds for "two metastable states". A single well gives t_2/t_3
@@ -112,9 +113,10 @@ def timescale_separation(msm):
     Ratio t_2 / t_3 of the two slowest implied timescales.
 
     A double well has one slow process (crossing the barrier) and fast
-    in-well relaxation, so t_2 / t_3 is large (tens or more; about 44 at
-    beta=5 and the chosen lag). A single well has no slow process and gives
-    a ratio below 2. This is
+    in-well relaxation, so t_2 / t_3 is large. At the chosen lag the
+    measured ratio is capped by the lag (about 55 at beta=5), so it is a
+    lower bound. A single well has no slow process and gives a ratio
+    below 2. This is
     the evidence for two metastable states; PCCA+ alone is not, because it
     always returns as many sets as it is asked for.
     """

@@ -1,15 +1,10 @@
 """
-Known-answer tests for agents/optimizer.py.
+Tests for agents/optimizer.py, all with scripted fake LLMs (no API calls).
 
-Per this module's own docstring: nothing here asserts a proposed config
-is GOOD -- there is no closed-form optimum and the LLM is non-
-deterministic. What's tested is the INTERFACE CONTRACT, entirely with
-fake LLMs (pydantic_ai.models.function.FunctionModel), no real API calls:
-malformed structured output is retried, not silently corrupted; the
-previous PipelineResult (including a failed one) really does reach the
-prompt sent to the model; and a scripted fake LLM that reacts to a
-failure signal in the prompt produces a proposal that differs from the
-config that just failed -- the actual plumbing guarantee that matters.
+They never judge whether a proposal is good (there is no known optimum).
+They check the interface: malformed output is retried, the previous result
+(including a failure) reaches the prompt, and an Optimizer that reacts to a
+failure proposes something different.
 """
 
 import pytest
@@ -52,14 +47,9 @@ def _tool_call_response(info: AgentInfo, **fields) -> ModelResponse:
 
 def test_search_bounds_prompt_does_not_reveal_a_solved_lag_value():
     """
-    Regression guard for the 2026-07-12 finding: an earlier version of
-    SearchBounds.as_prompt_text() handed the Optimizer the converged
-    msm_lagtime directly ("a well-motivated starting region"), and every
-    one of 8 independent real runs in the convergence-robustness study
-    proposed the byte-identical config as a direct result -- the search
-    never happened (PROJECT_STATE.md Sec 9). The prompt must describe the
-    SEARCH SPACE (bounds + physical reasoning), never a specific
-    "this is probably the answer" number.
+    The prompt must describe the search space and the physics that bounds
+    the lag, never a likely answer. When it once contained the converged
+    lag, every real run proposed the same config and no search happened.
     """
     bounds = SearchBounds(trajectory_length_frames=1_500_000, max_n_clusters=200)
     prompt_text = bounds.as_prompt_text()
@@ -71,10 +61,8 @@ def test_search_bounds_prompt_does_not_reveal_a_solved_lag_value():
 
 def test_system_prompt_states_vamp2_is_a_soft_guide_not_the_acceptance_criterion():
     """
-    Regression guard: the system prompt must explicitly separate VAMP-2
-    (a soft navigation guide) from the hard physics gates (what actually
-    decides acceptance) -- previously only implied, now a stated rule
-    (PROJECT_STATE.md Sec 9).
+    The system prompt must separate VAMP-2 (a soft guide) from the physics
+    checks that decide acceptance.
     """
     assert "SOFT GUIDE" in OPTIMIZER_SYSTEM_PROMPT
     assert "two_states_recovered" in OPTIMIZER_SYSTEM_PROMPT
@@ -83,10 +71,8 @@ def test_system_prompt_states_vamp2_is_a_soft_guide_not_the_acceptance_criterion
 
 def test_format_history_states_the_hard_physics_gates_explicitly():
     """
-    The Optimizer's own per-iteration history must show the two hard gate
-    Booleans as explicit fields, not just embedded in the Validator's
-    prose -- reinforces the same soft-guide-vs-hard-gate distinction
-    concretely, not just in the system prompt.
+    The history shown to the Optimizer must list the two physics checks as
+    explicit fields, not only inside the Validator's prose.
     """
     config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=20)
     result = PipelineResult(config=config, error=None, n_macrostates_recovered=2,
@@ -124,11 +110,8 @@ def test_format_history_includes_the_failed_result_error_message():
 
 def test_format_history_surfaces_the_validators_suggested_change():
     """
-    The Validator's suggested_change is real, concrete feedback about
-    what to try next -- it was being computed but never read by the
-    Optimizer's own prompt (caught while redesigning SearchBounds to
-    require genuine search, PROJECT_STATE.md Sec 9). Dead feedback would
-    make the reacts-to-rejection property weaker than it needs to be.
+    The Validator's suggested_change must reach the Optimizer's prompt, so
+    the Optimizer can use the feedback.
     """
     config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=5)
     result = PipelineResult(config=config, error=None, n_macrostates_recovered=1,
@@ -209,11 +192,9 @@ def test_exhausted_retries_raises_instead_of_returning_bad_data():
 
 def test_optimizer_proposes_a_different_config_after_a_failure():
     """
-    The real behavioral guarantee: given a scripted fake LLM that reads
-    the failure signal in the prompt and reacts to it (exactly the
-    behavior the system prompt asks a real LLM for), the resulting
-    proposal must differ from the config that just failed. This tests
-    that the feedback loop is WIRED -- not that any real LLM is smart.
+    With a fake LLM that reacts to the failure shown in the prompt, the
+    next proposal must differ from the config that failed. This tests that
+    the feedback is wired through, not that a real LLM is smart.
     """
     failing_config = PipelineConfig(n_clusters=50, cluster_seed=42, msm_lagtime=1_499_999)
     entry = _failed_ledger_entry(

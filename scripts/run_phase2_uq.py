@@ -8,9 +8,10 @@ no new simulation. For every resolved beta it reports:
 - width: the standard deviation implied by the Bayesian interval, compared
   with the actual spread of the replica rates.
 
-The Bayesian posterior describes transition-count noise for one fixed set
-of microstates. It leaves out the variation between replicas' k-means
-clusterings, so it can be too narrow; this report measures by how much.
+The Bayesian posterior uses deeptime's "effective" transition counts, which
+here are only about 20% below the overlapping sliding counts although those
+are correlated over a whole lag. It therefore acts as if it had far more
+independent data than it does; this report measures by how much.
 The replica spread, not the Bayesian width, is the uncertainty used by the
 Phase 1 gate and the Phase 3 Validator.
 

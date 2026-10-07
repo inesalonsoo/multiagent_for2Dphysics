@@ -45,7 +45,7 @@ def test_same_seed_gives_identical_clustering():
 def test_cluster_centers_span_the_data_range():
     """
     With enough microstates, the k-means centers should span roughly the
-    same range as the underlying data -- not collapse to a narrow band
+    same range as the underlying data, not collapse to a narrow band
     (a sanity check that clustering is actually resolving structure,
     not just noise).
     """

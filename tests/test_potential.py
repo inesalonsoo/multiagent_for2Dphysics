@@ -126,7 +126,7 @@ def test_derivative_matches_finite_difference_with_tilt():
 
 def test_tilt_breaks_the_symmetry():
     """
-    With b != 0, V(phi) should NOT equal V(-phi) in general -- unlike the
+    With b != 0, V(phi) should NOT equal V(-phi) in general, unlike the
     b=0 case (test_potential_is_symmetric), the tilt is specifically
     meant to make the two wells unequal.
     """

@@ -10,9 +10,9 @@ so it guarantees two things (both tested):
    the same result. The only randomness (k-means) is seeded from the
    config.
 2. Never crashes on a bad config. Problems such as a lag longer than the
-   trajectory, unvisited regions, or the MSM estimator rejecting the data
-   are logged in full and returned as a PipelineResult with `error` set,
-   so the agents can reason about them.
+   trajectory, unvisited regions, too few regions to measure t_3, or the
+   MSM estimator rejecting the data are logged in full and returned as a
+   PipelineResult with `error` set, so the agents can reason about them.
 
 It does not judge the physics: comparing with the exact answers is the
 Validator's job.
@@ -88,7 +88,8 @@ def _estimate_msm_and_macrostates(discrete_trajectory, msm_lagtime):
     Build the transition counts, the MSM, and its 2-macrostate PCCA+
     grouping, all at msm_lagtime. The MSM estimator can reject degenerate
     data (for example disconnected regions); that is caught and returned
-    as an error.
+    as an error. An MSM with fewer than 3 states is also an error: it has
+    no t_3, so the timescale separation check cannot run.
 
     Returns
     -------
@@ -110,6 +111,15 @@ def _estimate_msm_and_macrostates(discrete_trajectory, msm_lagtime):
     except Exception as exc:
         message = f"MSM/PCCA+ estimation failed at msm_lagtime={msm_lagtime}: {exc}"
         logger.error(message, exc_info=True)
+        return None, None, None, message
+
+    # Each state after the first adds one implied timescale, so t_3 needs 3 states
+    if msm.n_states < 3:
+        message = (
+            f"the MSM has only {msm.n_states} connected microstates, "
+            f"but the timescale separation check needs at least 3."
+        )
+        logger.error(message)
         return None, None, None, message
 
     return msm, pcca_model, min_transition_count, None

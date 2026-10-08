@@ -22,6 +22,10 @@ from physics.potential import potential, potential_derivative
 # the eigensolver's round-off, so exact_relaxation_rate_0d() refuses to run.
 MAX_BETA_FOR_EXACT_RATE = 15.0
 
+# V''(x) = 12*A*x**2 - 4*A is zero at x = INFLECTION_POINT and at its mirror
+# image, for any A > 0. Beyond them V' only rises. Between them V' only falls.
+INFLECTION_POINT = 1.0 / np.sqrt(3.0)
+
 
 def expected_number_of_states():
     """
@@ -156,14 +160,17 @@ def euler_maruyama_relaxation_rate_0d(beta, dt, A=1.0, n_points=800):
 
 def find_well_positions(A=1.0, b=0.0):
     """
-    Numerically locate the two well positions (minima of V) by root-
-    finding V'(x) = 4*A*x*(x**2-1) + b = 0 with scipy.optimize.brentq,
-    bracketing around x=-1 (left well) and x=+1 (right well).
+    Numerically locate the two well positions (minima of V) by finding the
+    roots of V'(x) = 4*A*x*(x**2-1) + b with scipy.optimize.brentq.
+
+    Beyond the inflection points V' only rises, so each well is the single
+    root of V' between an inflection point and |x| = 2. V'' > 0 there, so
+    the root is always a minimum, never the barrier top.
 
     This is exact up to solver tolerance. For b=0 it returns (-1.0, 1.0).
-    For 0 < |b| < 8*A/(3*sqrt(3)) (about 1.54*A, beyond which one well
-    disappears), both wells shift by nearly the same small amount (equal
-    to first order in b).
+    A small tilt shifts both wells by nearly the same amount (equal to
+    first order in b). At the critical tilt, about 1.54*A, one well merges
+    with the barrier, so |b| at or above it raises ValueError.
 
     Parameters
     ----------
@@ -178,11 +185,20 @@ def find_well_positions(A=1.0, b=0.0):
         (x_minus, x_plus): the left (near -1) and right (near +1) well
         positions.
     """
+    # V' has three roots (two wells and the barrier) only while |b| stays
+    # below the untilted slope at the inflection point, about 1.54*A
+    critical_tilt = abs(potential_derivative(INFLECTION_POINT, A=A))
+    if abs(b) >= critical_tilt:
+        raise ValueError(
+            f"|b| = {abs(b)} is at or above the critical tilt {critical_tilt:.6f}, "
+            f"so V has only one well"
+        )
+
     def derivative_at(x):
         return potential_derivative(x, A=A, b=b)
 
-    x_minus = brentq(derivative_at, -1.5, -0.5)
-    x_plus = brentq(derivative_at, 0.5, 1.5)
+    x_minus = brentq(derivative_at, -2.0, -INFLECTION_POINT)
+    x_plus = brentq(derivative_at, INFLECTION_POINT, 2.0)
     return x_minus, x_plus
 
 
@@ -211,9 +227,10 @@ def boltzmann_population_ratio(beta, A=1.0, b=0.0):
     """
     x_minus, x_plus = find_well_positions(A=A, b=b)
 
-    # The barrier top is the root of V' between the two wells
+    # Between the inflection points V' only falls, so its single root there
+    # is the barrier top
     barrier_top = brentq(lambda x: potential_derivative(x, A=A, b=b),
-                         x_minus + 0.01, x_plus - 0.01)
+                         -INFLECTION_POINT, INFLECTION_POINT)
 
     # Shift by the lowest minimum so the integrand stays O(1)
     lowest_energy = min(potential(x_minus, A=A, b=b), potential(x_plus, A=A, b=b))

@@ -107,12 +107,17 @@ def test_timescale_separation_distinguishes_double_from_single_well():
 
 def test_macrostate_populations_are_symmetric():
     """
-    For b=0 the two wells hold equal populations. The trajectory has about
-    85 crossings, so the population difference fluctuates by roughly
-    1/sqrt(42), about 15%; 0.15 is the tolerance.
+    For b=0 the two wells hold equal populations. This beta=3 trajectory
+    has about 600 crossings, seven times more than the shared beta=5 one.
+    With 2 sets, PCCA+ populations are set by the two most extreme entries
+    of the slowest eigenvector, so they scatter less than the time spent in
+    each well. Over 20 seeds their difference had a spread of 0.022, and
+    the tolerance 0.07 is about three times that.
     """
-    _, pcca_model = recover_two_macrostates(_DISCRETE_TRAJECTORY, lagtime=20)
+    discrete_trajectory = _discrete_trajectory(beta=3.0, n_steps=1_500_000, seed=7)
+
+    _, pcca_model = recover_two_macrostates(discrete_trajectory, lagtime=20)
     populations = pcca_model.coarse_grained_stationary_probability
 
     assert abs(populations.sum() - 1.0) < 1e-6
-    assert abs(populations[0] - populations[1]) < 0.15
+    assert abs(populations[0] - populations[1]) < 0.07

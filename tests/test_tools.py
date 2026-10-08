@@ -106,6 +106,19 @@ def test_run_msm_pipeline_reports_lagtime_ill_posedness_without_raising():
     assert result.trajectory_length_frames == 100
 
 
+def test_run_msm_pipeline_reports_too_few_microstates_without_raising():
+    """Two microstates give one implied timescale, so t_3 does not exist.
+    The result must be flagged, not raise an IndexError."""
+    config = PipelineConfig(n_clusters=2, cluster_seed=42, msm_lagtime=20)
+
+    result = run_msm_pipeline(config, _TRAJECTORY, DT)
+
+    assert result.error is not None
+    assert "at least 3" in result.error
+    assert result.timescale_separation is None
+    assert result.relaxation_rate_mean is None
+
+
 def test_run_msm_pipeline_reports_clustering_ill_posedness_without_raising():
     """Far more clusters than a short trajectory can fill must return a
     flagged result, not an exception from k-means."""

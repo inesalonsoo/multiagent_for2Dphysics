@@ -8,6 +8,7 @@ formula, and two independent routes to the exact relaxation rate.
 """
 
 import numpy as np
+import pytest
 from scipy.integrate import quad
 
 from physics.potential import potential, potential_derivative
@@ -79,6 +80,34 @@ def test_root_positions_satisfy_derivative_via_finite_difference():
 
             assert abs(analytical_slope) < 1e-6
             assert abs(numerical_slope) < 1e-4
+
+
+# (A, a tilt just below the critical tilt, a tilt just above it). The critical
+# tilt is 1.539601 for A = 1 and 3.079201 for A = 2.
+NEAR_CRITICAL_TILTS = [(1.0, 1.5395, 1.5397), (2.0, 3.0791, 3.0793)]
+
+
+def test_wells_are_found_up_to_the_critical_tilt():
+    """
+    Just below the critical tilt both wells still exist. Each returned root
+    must have zero slope and positive curvature: a minimum, not the barrier.
+    """
+    for barrier_height_value, tilt_below, _ in NEAR_CRITICAL_TILTS:
+        for b in (tilt_below, -tilt_below):
+            for root in find_well_positions(A=barrier_height_value, b=b):
+                # V''(x) = 12*A*x**2 - 4*A
+                curvature = barrier_height_value * (12.0 * root**2 - 4.0)
+
+                assert abs(potential_derivative(root, A=barrier_height_value, b=b)) < 1e-9
+                assert curvature > 0.0
+
+
+def test_well_positions_refuse_a_single_well_tilt():
+    """At or above the critical tilt one well is gone, so there is no pair to return."""
+    for barrier_height_value, _, tilt_above in NEAR_CRITICAL_TILTS:
+        for b in (tilt_above, -tilt_above):
+            with pytest.raises(ValueError, match="critical tilt"):
+                find_well_positions(A=barrier_height_value, b=b)
 
 
 def test_tilted_energy_difference_matches_small_tilt_expansion():

@@ -1,5 +1,4 @@
 <title>Agentic MSM Loop</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root {
     --ink: #1a2028;
@@ -21,7 +20,8 @@
     --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --ink: #e8e9e4;
       --ink-soft: #a8afb8;
       --paper: #14171b;
@@ -39,6 +39,7 @@
     }
   }
   :root[data-theme="dark"] {
+    color-scheme: dark;
     --ink: #e8e9e4; --ink-soft: #a8afb8; --paper: #14171b; --paper-raised: #1b1f25;
     --line: #2c323b; --blue: #7fb1e0; --blue-soft: #1c2b3a; --orange: #e0a75e;
     --orange-soft: #332512; --red: #e2908f; --red-soft: #3a2020; --green: #8fc7a8;
@@ -52,7 +53,8 @@
   }
 
   * { box-sizing: border-box; }
-  html, body {
+  html, body { height: 100%; }
+  body {
     margin: 0; padding: 0; background: var(--paper); color: var(--ink);
     font-family: var(--sans); scroll-behavior: smooth;
   }
@@ -65,16 +67,14 @@
   .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
   .deck {
-    height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory;
+    height: 100%; overflow-y: auto; scroll-snap-type: y mandatory;
   }
   .slide {
     min-height: 100dvh; width: 100%; scroll-snap-align: start; scroll-snap-stop: always;
     display: flex; flex-direction: column; justify-content: center;
     padding: clamp(28px, 6vw, 76px) clamp(24px, 9vw, 120px);
-    position: relative; opacity: 0; transform: translateY(14px);
-    transition: opacity .55s ease, transform .55s ease;
+    position: relative;
   }
-  .slide.in-view { opacity: 1; transform: translateY(0); }
   .slide-inner { max-width: 980px; margin: 0 auto; width: 100%; }
 
   .eyebrow {
@@ -134,7 +134,7 @@
 
   /* Architecture diagram */
   .arch { display: flex; flex-direction: column; align-items: center; gap: 0; margin-top: 8px; }
-  .arch-row { display: flex; justify-content: center; gap: 34px; width: 100%; }
+  .arch-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 34px; width: 100%; }
   .arch-box {
     flex: 1; max-width: 240px; background: var(--paper-raised); border: 1.5px solid var(--blue);
     border-radius: 4px; padding: 14px 16px; text-align: center; box-shadow: var(--shadow);
@@ -165,7 +165,8 @@
   .lean-block .sorry { color: var(--orange); font-weight: 600; }
 
   .nav-ui {
-    position: fixed; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 14px;
+    position: fixed; right: 22px; bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    display: flex; align-items: center; gap: 14px;
     z-index: 20; font-family: var(--mono); font-size: .75rem; color: var(--ink-soft);
   }
   .nav-dots { display: flex; gap: 6px; }
@@ -179,7 +180,8 @@
   .nav-btn:focus-visible, .nav-dot:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
   .slide-index {
-    position: fixed; left: 22px; bottom: 22px; font-family: var(--mono); font-size: .72rem;
+    position: fixed; left: 22px; bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    font-family: var(--mono); font-size: .72rem;
     color: var(--ink-soft); z-index: 20; letter-spacing: .04em;
   }
 
@@ -192,7 +194,7 @@
   @media print {
     .nav-ui, .slide-index { display: none; }
     .deck { height: auto; overflow: visible; }
-    .slide { min-height: auto; page-break-after: always; opacity: 1; transform: none; }
+    .slide { min-height: auto; page-break-after: always; }
   }
 </style>
 
